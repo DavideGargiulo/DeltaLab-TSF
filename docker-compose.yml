@@ -1,0 +1,39 @@
+version: "3.8"
+
+services:
+  # 🗄️ Database MySQL
+  mysql-db:
+    image: mysql:8.0
+    container_name: telefono_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: telefono_db
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: apppassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./database/db-init:/docker-entrypoint-initdb.d
+      - ./database/mysql-data:/var/lib/mysql
+
+  # 🖥️ Backend C
+  backend-c:
+    build: ./backend
+    container_name: backend_c
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql-db
+
+  # 🎨 Frontend JavaFX
+  frontend-java:
+    build: ./frontend
+    container_name: frontend_java
+    depends_on:
+      - backend-c
+    stdin_open: true
+    tty: true
+
+volumes:
+  mysql-data:
