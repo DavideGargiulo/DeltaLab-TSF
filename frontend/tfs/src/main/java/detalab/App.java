@@ -17,9 +17,12 @@ public class App extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
-        scene = new Scene(loadFXML("primary"), 640, 480);
+        scene = new Scene(loadFXML("login"), 800, 500);
         stage.setScene(scene);
+        stage.setTitle("Telefono Senza Filo - DeltaLab");
         stage.show();
+        stage.setMinWidth(stage.getWidth());
+        stage.setMinHeight(stage.getHeight());
     }
 
     static void setRoot(String fxml) throws IOException {

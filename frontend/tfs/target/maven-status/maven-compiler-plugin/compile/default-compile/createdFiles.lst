@@ -1,4 +1,5 @@
+detalab\LoginPageController.class
 detalab\App.class
-detalab\SecondaryController.class
 module-info.class
-detalab\PrimaryController.class
+detalab\MainPageController.class
+detalab\RegisterPageController.class
