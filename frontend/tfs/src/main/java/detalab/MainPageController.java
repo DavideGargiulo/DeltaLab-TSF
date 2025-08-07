@@ -6,7 +6,12 @@ import javafx.fxml.FXML;
 public class MainPageController {
 
     @FXML
-    private void switchToLogin() throws IOException {
+    private void exit() throws IOException {
         App.setRoot("login");
+    }
+
+    @FXML
+    private void enterGame() throws IOException {
+        App.setRoot("game");
     }
 }

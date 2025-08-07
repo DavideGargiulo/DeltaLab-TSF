@@ -31,21 +31,21 @@
             </ImageView>
          </children>
       </VBox>
-      <VBox alignment="CENTER" prefHeight="200.0" prefWidth="100.0" GridPane.columnIndex="1">
+      <VBox alignment="CENTER" prefHeight="200.0" prefWidth="100.0" spacing="50.0" GridPane.columnIndex="1">
          <children>
             <Label text="Accesso" />
-            <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0">
+            <VBox alignment="CENTER" spacing="10.0">
                <children>
                   <Label text="Email" />
-                  <TextField />
+                  <TextField maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefWidth="250.0" />
                </children>
-            </HBox>
-            <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0">
+            </VBox>
+            <VBox alignment="CENTER" spacing="10.0">
                <children>
                   <Label text="Password" />
-                  <PasswordField />
+                  <PasswordField maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefWidth="250.0" />
                </children>
-            </HBox>
+            </VBox>
             <Button mnemonicParsing="false" onAction="#Login" text="Accedi" />
             <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0">
                <children>
