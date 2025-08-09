@@ -53,3 +53,16 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# Zone Identifier files (Windows)
+*:Zone.Identifier
+
+# Temporary files
+*.tmp
+*.temp
+TMP/
+tmp/
+
+# Frontend target directories
+frontend/target/
+frontend/tfs/target/
