@@ -17,7 +17,7 @@ DBConnection* dbConnectWithOptions(const char *host, const char *dbname,
                                    int timeout);
 void dbDisconnect(DBConnection *dbConn);
 int dbIsConnected(DBConnection *dbConn);
-
+int dbPing(DBConnection *dbConn);
 // Transaction
 int dbBeginTransaction(DBConnection *dbConn);
 int dbCommitTransaction(DBConnection *dbConn);
