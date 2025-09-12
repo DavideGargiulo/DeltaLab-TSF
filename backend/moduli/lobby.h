@@ -10,6 +10,7 @@
 #define LOBBY_H
 
 #include <pthread.h>
+#include <stdbool.h>
 #include "list.h"
 #include "../utils.h"
 
@@ -36,25 +37,25 @@ typedef enum {
  * @brief Struttura che rappresenta un giocatore connesso.
  */
 typedef struct {
-  int user_id;       ///< ID univoco dell'utente (dal database).
-  int client_socket; ///< File descriptor del socket di connessione del client.
+  int userId;       ///< ID univoco dell'utente (dal database).
+  int clientSocket; ///< File descriptor del socket di connessione del client.
 } Player;
 
 /**
  * @brief Struttura che rappresenta una stanza di gioco (lobby).
  */
 typedef struct {
-  char id[ROOM_ID_LEN + 1]; ///< ID univoco alfanumerico della stanza.
-
-  List *players;         ///< Lista dei giocatori attivi nella stanza.
-  List *waiting_queue;   ///< Coda dei giocatori in attesa di entrare.
-
-  unsigned int min_players;   ///< Numero minimo di giocatori per iniziare la partita.
-  unsigned int max_players;   ///< Numero massimo di giocatori consentiti.
-  TurnDirection direction;    ///< Direzione di rotazione dei turni.
-
-  pthread_mutex_t lock;   ///< Mutex per garantire l'accesso thread-safe a questa stanza.
-  RoomStatus status;      ///< Stato attuale della stanza.
+  char id[ROOM_ID_LEN + 1];           ///< Corrisponde a 'id' (CHAR(6))
+  int utenti_connessi;                ///< Corrisponde a 'utenti_connessi' (INT)
+  TurnDirection rotazione;            ///< Corrisponde a 'rotazione' (VARCHAR)
+  char id_accountCreatore[50]; ///< Corrisponde a 'id_accountCreatore' (CHAR(6))
+  bool is_private;                    ///< Corrisponde a 'is_private' (BOOLEAN)
+  RoomStatus status;                  ///< Corrisponde a 'status' (VARCHAR)
+  
+  // Campi gestiti solo a livello di applicazione
+  pthread_mutex_t lock; 
+  List* currentPlayers;  ///< Lista di giocatori attivi nella stanza.
+  List* waitingPlayers;   ///< Lista di giocatori in attesa di entrare.
 } Room;
 
 /**
@@ -70,9 +71,8 @@ typedef struct {
  */
 typedef struct {
   char id[ROOM_ID_LEN + 1];      ///< ID della stanza.
-  char name[ROOM_NAME_MAX_LEN];  ///< Nome della stanza.
-  unsigned int current_players;  ///< Numero attuale di giocatori.
-  unsigned int max_players;      ///< Numero massimo di giocatori.
+  unsigned int currentPlayers;  ///< Numero attuale di giocatori.
+  unsigned int maxPlayers;      ///< Numero massimo di giocatori.
   RoomStatus status;             ///< Stato della stanza.
 } PublicRoomInfo;
 
@@ -95,7 +95,7 @@ void destroyRoomManager(RoomManager* manager);
  * @param[in] manager Il gestore delle stanze.
  * @return Una nuova lista contenente le informazioni, o NULL in caso di errore.
  */
-List* getAllRooms(RoomManager* manager);
+List* getAllRooms();
 
 /**
  * @brief Crea una nuova stanza di gioco e la aggiunge al manager.
@@ -106,7 +106,7 @@ List* getAllRooms(RoomManager* manager);
  * @param[in] direction Direzione di rotazione dei turni (orario/antiorario).
  * @return Un puntatore alla stanza creata e aggiunta, o NULL in caso di errore.
  */
-Room* createRoom(RoomManager* manager, const char* name, unsigned int min_players, unsigned int max_players, TurnDirection direction);
+Room* createRoom(RoomManager* manager, unsigned int minPlayers, unsigned int maxPlayers, TurnDirection direction, Player* creator);
 
 /**
  * @brief Trova una stanza esistente tramite il suo ID univoco.
@@ -134,6 +134,6 @@ int handlePlayerJoin(Room* room, Player* player);
  * @param[in] player_id L'ID del giocatore da rimuovere.
  * @return 0 in caso di successo, -1 se il giocatore non viene trovato.
  */
-int handlePlayerLeave(Room* room, int player_id);
+int handlePlayerLeave(RoomManager* manager, Room* room, int playerID);
 
 #endif

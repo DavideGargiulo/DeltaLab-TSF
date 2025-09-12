@@ -1,65 +1,36 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-
-#include "moduli/auth.h"
-//#include "moduli/lobby.h"
-
-#define PORT 8080
-#define BUFFER_SIZE 4096
-
-void route_request(int client_socket, const char *request) {
-    if (strstr(request, "POST /register")) {
-        authRegister(client_socket, request);
-    } else if (strstr(request, "POST /login")) {
-        authLogin(client_socket, request);
-    } else {
-        char *response = "HTTP/1.1 404 Not Found\r\n\r\nEndpoint non trovato";
-        send(client_socket, response, strlen(response), 0);
-    }
-}
+#include "moduli/dbConnection.h"
 
 int main() {
-    int server_fd, client_socket;
-    struct sockaddr_in address;
-    int addrlen = sizeof(address);
-    char buffer[BUFFER_SIZE];
-
-    // 🛠️ Socket setup
-    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
-        perror("Errore socket");
-        exit(EXIT_FAILURE);
-    }
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(PORT);
-
-    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
-        perror("Errore bind");
-        exit(EXIT_FAILURE);
+  // Connessione con parametri personalizzati
+  DBConnection *conn = dbConnectWithOptions("0.0.0.0", "deltalabtsf", "postgres", "admin", 30);
+   if (!conn) {
+        fprintf(stderr, "Connessione fallita\n");
+        return 1;
     }
 
-    if (listen(server_fd, 10) < 0) {
-        perror("Errore listen");
-        exit(EXIT_FAILURE);
+    if (!dbBeginTransaction(conn)) {
+        fprintf(stderr, "Impossibile iniziare transazione\n");
+        dbDisconnect(conn);
+        return 1;
     }
 
-    printf("✅ Backend C in ascolto su porta %d...\n", PORT);
+    // Query valida
+    PGresult *res = dbExecuteQuery(conn, "INSERT INTO test_table(val) VALUES ('ok')");
+    if (res) PQclear(res);
 
-    while (1) {
-        if ((client_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) >= 0) {
-            memset(buffer, 0, sizeof(buffer));
-            read(client_socket, buffer, BUFFER_SIZE);
-            printf("📥 Richiesta:\n%s\n", buffer);
-
-            // 📡 Instrada la richiesta
-            route_request(client_socket, buffer);
-
-            close(client_socket);
-        }
+    // Query volutamente sbagliata
+    res = dbExecuteQuery(conn, "INSERTO INTO test_table(val) VALUES ('errore')");
+    if (!res) {
+        fprintf(stderr, "Errore rilevato, eseguo rollback\n");
+        dbRollbackTransaction(conn);
+    } else {
+        PQclear(res);
+        dbCommitTransaction(conn);
     }
 
-    return 0;
+    dbDisconnect(conn);
+  printf("Test completato\n");
+  return 0;
 }

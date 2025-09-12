@@ -79,4 +79,15 @@ int listPushBack(List *list, void *data);
  */
 void* listPopFront(List *list);
 
+/**
+ * @brief Rimuove il primo nodo che soddisfa la condizione specificata da `match`.
+ * Se `freeData` è fornita, viene chiamata per deallocare i dati del nodo rimosso.
+ * @param[in] list La lista da cui rimuovere il nodo.
+ * @param[in] match Funzione che ritorna != 0 se il nodo è quello da rimuovere.
+ * @param[in] arg Argomento da passare alla funzione `match`.
+ * @param[in] freeData Funzione per deallocare i dati del nodo, o NULL se non necessario.
+ * @return 0 in caso di successo, -1 se non viene trovato alcun nodo corrispondente.
+ */
+int listRemoveFirstMatch(List *list, int (*match)(void*, void*), void *arg, void (*freeData)(void*));
+
 #endif

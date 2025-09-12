@@ -1,12 +1,6 @@
-# FROM gcc:13
-# WORKDIR /app
-# COPY . .
-# RUN gcc -o server $(find . -name "*.c") -lpthread
-# CMD ["./server"]
-
-FROM alpine:3.14
-RUN apk add --no-cache gcc musl-dev postgresql-dev
+FROM ubuntu:24.04
+RUN apt-get update && apt-get install -y gcc libpq-dev
 WORKDIR /app
 COPY . .
-RUN gcc -o server $(find . -name "*.c") -lpthread
+RUN gcc -I/usr/include/postgresql server.c moduli/dbConnection.c -lpq -o server
 CMD ["./server"]
