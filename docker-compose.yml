@@ -26,14 +26,5 @@ services:
     depends_on:
       - mysql-db
 
-  # 🎨 Frontend JavaFX
-  frontend-java:
-    build: ./frontend
-    container_name: frontend_java
-    depends_on:
-      - backend-c
-    stdin_open: true
-    tty: true
-
 volumes:
   mysql-data:
