@@ -4,7 +4,8 @@
 
 int main() {
   // Connessione con parametri personalizzati
-  DBConnection *conn = dbConnectWithOptions("0.0.0.0", "deltalabtsf", "postgres", "admin", 30);
+  printf("Inizio test...\n");
+  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
    if (!conn) {
         fprintf(stderr, "Connessione fallita\n");
         return 1;
@@ -21,7 +22,7 @@ int main() {
     if (res) PQclear(res);
 
     // Query volutamente sbagliata
-    res = dbExecuteQuery(conn, "INSERTO INTO test_table(val) VALUES ('errore')");
+    res = dbExecuteQuery(conn, "INSERT INTO test_table(val) VALUES ('errore')");
     if (!res) {
         fprintf(stderr, "Errore rilevato, eseguo rollback\n");
         dbRollbackTransaction(conn);
