@@ -5,8 +5,8 @@
 
 void parse_json_field(const char *json, const char *field, char *output);
 
-void initialize_rng();
+void initializeRng();
 
-void generate_random_id(char *buffer);
+void generateRandomId(char *buffer);
 
 #endif

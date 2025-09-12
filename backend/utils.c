@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include "utils.h"
@@ -14,11 +15,11 @@ void parse_json_field(const char *json, const char *field, char *output) {
     }
 }
 
-void initialize_rng() {
+void initializeRng() {
   srand(time(NULL));
 }
 
-void generate_random_id(char *buffer) {
+void generateRandomId(char *buffer) {
   for (size_t i = 0; i < ROOM_ID_LEN; ++i) {
     buffer[i] = CHARSET[rand() % CHARSET_SIZE];
   }
