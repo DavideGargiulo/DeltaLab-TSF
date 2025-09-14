@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "moduli/dbConnection.h"
+#include "moduli/auth.h"
 
 int main() {
   // Connessione con parametri personalizzati
@@ -11,25 +12,26 @@ int main() {
         return 1;
     }
 
-    if (!dbBeginTransaction(conn)) {
-        fprintf(stderr, "Impossibile iniziare transazione\n");
-        dbDisconnect(conn);
-        return 1;
-    }
+    // crea le tabelle se non esistono
+    // if (!createTables(conn)) {
+    //     fprintf(stderr, "Creazione tabelle fallita\n");
+    //     dbDisconnect(conn);
+    //     return 1;
+    // }
 
-    // Query valida
-    PGresult *res = dbExecuteQuery(conn, "INSERT INTO test_table(val) VALUES ('ok')");
-    if (res) PQclear(res);
+    PGresult *res;
 
-    // Query volutamente sbagliata
-    res = dbExecuteQuery(conn, "INSERT INTO test_table(val) VALUES ('errore')");
-    if (!res) {
-        fprintf(stderr, "Errore rilevato, eseguo rollback\n");
-        dbRollbackTransaction(conn);
-    } else {
+    res = dbExecuteQuery(conn,
+    "INSERT INTO account (nickname, email, password, lingua) "
+    "VALUES ('gege', 'a@a.a', md5('avv'), 'it')");
+    if (res) {
         PQclear(res);
-        dbCommitTransaction(conn);
+        printf("✅ Account creato con successo\n");
+    } else {
+        fprintf(stderr, "❌ Errore creazione account\n");
     }
+
+
 
     dbDisconnect(conn);
   printf("Test completato\n");

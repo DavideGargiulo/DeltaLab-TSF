@@ -7,8 +7,15 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: deltalabtsf
+    ports:
+      - "5432:5432"     # se è occupata, cambia in "15432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d deltalabtsf || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   # 🖥️ Backend C
   backend-c:
@@ -17,7 +24,26 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+
+  # 🧭 pgAdmin 4 (UI web)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@local.it
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_SERVER_MODE: "False"
+    ports:
+      - "127.0.0.1:5050:80"  # accesso solo dalla macchina locale: http://localhost:5050
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
 
 volumes:
   postgres_data:
+  pgadmin_data:
