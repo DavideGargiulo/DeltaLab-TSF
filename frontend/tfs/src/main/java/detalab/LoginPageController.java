@@ -32,7 +32,7 @@ public class LoginPageController {
     }
 
     @FXML
-    TextField emailField;
+    TextField usernameField;
 
     @FXML
     PasswordField passwordField;
