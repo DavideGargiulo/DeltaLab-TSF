@@ -1,10 +1,10 @@
-// server.c - Mongoose API compat
 #include "mongoose.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
 
 #include "moduli/auth.h"
+#include "moduli/lobby.h"
 // #include "moduli/dbConnection.h"
 
 static const char *s_listen = "http://0.0.0.0:8080";
@@ -15,7 +15,7 @@ static void send_json(struct mg_connection *c, int code, const char *json) {
     "Content-Type: application/json\r\n"
     "Access-Control-Allow-Origin: *\r\n"
     "Access-Control-Allow-Headers: Content-Type, Authorization\r\n"
-    "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n",
+    "Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS\r\n",
     "%s", json);
 }
 
@@ -24,7 +24,7 @@ static bool handle_cors(struct mg_connection *c, struct mg_http_message *hm) {
   if (mg_strcmp(hm->method, mg_str("OPTIONS")) == 0) {
     mg_http_reply(c, 204,
       "Access-Control-Allow-Origin: *\r\n"
-      "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n"
+      "Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS\r\n"
       "Access-Control-Allow-Headers: Content-Type, Authorization\r\n",
       "");
     return true;
@@ -105,6 +105,103 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
       }
       send_json(c, 201, "{\"result\":true,\"message\":\"Utente registrato\",\"content\":null}");
       return;
+    }
+
+    if (mg_strcmp(hm->method, mg_str("GET")) == 0) {
+      struct mg_str path = hm->uri;
+
+      // GET /lobby/:id (lobby specifica)
+      if (path.len > 7 && memcmp(path.buf, "/lobby/", 7) == 0) {
+        size_t id_len = path.len - 7;
+        if (id_len >= 1 && id_len <= 6) {  // ID tra 1 e 6 caratteri
+          char lobby_id[8] = {0};
+          snprintf(lobby_id, sizeof(lobby_id), "%.*s", (int)id_len, path.buf + 7);
+
+          char *response = getLobbyById(lobby_id);
+
+          int status_code = (strstr(response, "\"result\":true") != NULL) ? 200 : 404;
+
+          send_json(c, status_code, response);
+          free(response);
+          return;
+        }
+
+        send_json(c, 400, "{\"result\":false,\"message\":\"ID lobby non valido\",\"content\":null}");
+        return;
+      }
+
+      // GET /lobby (tutte le lobby) - match esatto
+      if (mg_strcmp(path, mg_str("/lobby")) == 0) {
+        char *response = getAllLobbies();
+        
+        int status_code = (strstr(response, "\"result\":true") != NULL) ? 200 : 500;
+        
+        send_json(c, status_code, response);
+        free(response);
+        return;
+      }
+    }
+
+    if (mg_strcmp(hm->uri, mg_str("/lobby")) == 0 &&
+      mg_strcmp(hm->method, mg_str("POST")) == 0) {
+      
+      char *requestBody = malloc(hm->body.len + 1);
+      if (!requestBody) {
+        send_json(c, 500, "{\"result\":false,\"message\":\"Errore di memoria\",\"content\":null}");
+        return;
+      }
+      
+      memcpy(requestBody, hm->body.buf, hm->body.len);
+      requestBody[hm->body.len] = '\0';
+      
+      char *response = createLobbyEndpoint(requestBody);
+      
+      int status_code = (strstr(response, "\"result\":true") != NULL) ? 201 : 400;
+      
+      send_json(c, status_code, response);
+      
+      free(requestBody);
+      free(response);
+      return;
+    }
+
+    if (mg_strcmp(hm->method, mg_str("DELETE")) == 0) {
+      struct mg_str path = hm->uri;
+      
+      if (path.len > 7 && memcmp(path.buf, "/lobby/", 7) == 0) {
+        size_t id_len = path.len - 7;
+        if (id_len >= 1 && id_len <= 6) {
+          char lobby_id[8] = {0};
+          snprintf(lobby_id, sizeof(lobby_id), "%.*s", (int)id_len, path.buf + 7);
+          
+          int creatorId = 0;
+          int toklen = 0;
+          int ofs = mg_json_get(hm->body, "$.creatorId", &toklen);
+          if (ofs >= 0 && toklen > 0) {
+            char temp[16] = {0};
+            if (toklen < 16) {
+              memcpy(temp, hm->body.buf + ofs, toklen);
+              creatorId = atoi(temp);
+            }
+          }
+          
+          if (creatorId <= 0) {
+            send_json(c, 400, "{\"result\":false,\"message\":\"creatorId richiesto\",\"content\":null}");
+            return;
+          }
+          
+          char *response = deleteLobby(lobby_id, creatorId);
+          
+          int status_code = (strstr(response, "\"result\":true") != NULL) ? 200 : 404;
+          
+          send_json(c, status_code, response);
+          free(response);
+          return;
+        }
+        
+        send_json(c, 400, "{\"result\":false,\"message\":\"ID lobby non valido\",\"content\":null}");
+        return;
+      }
     }
 
     // 404

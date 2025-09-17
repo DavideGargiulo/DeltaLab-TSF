@@ -278,37 +278,78 @@ PGresult* dbExecuteQueryWithTimeout(DBConnection *dbConn, const char *query,
   if (!dbConn || !query || timeoutSeconds <= 0) {
     return NULL;
   }
+
+  // Approccio non-blocking
+  if (PQsetnonblocking(dbConn->conn, 1) != 0) {
+    fprintf(stderr, "Errore nel setting non-blocking mode\n");
+    return NULL;
+  }
+
+  // Invia query asincrona
+  if (PQsendQuery(dbConn->conn, query) != 1) {
+    fprintf(stderr, "Errore nell'invio query asincrona: %s", 
+            PQerrorMessage(dbConn->conn));
+    PQsetnonblocking(dbConn->conn, 0);
+    return NULL;
+  }
+
+  // Attendi risultato con timeout usando select()
+  fd_set input_mask;
+  struct timeval timeout;
+  int sock = PQsocket(dbConn->conn);
   
-  queryTimeoutOccurred = 0;
-  
-  // Imposta handler SIGALRM
-  struct sigaction sa;
-  sa.sa_handler = timeoutHandler;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = 0;
-  sigaction(SIGALRM, &sa, NULL);
-  
-  alarm(timeoutSeconds);
-  
-  PGresult *result = dbExecuteQuery(dbConn, query);
-  
-  alarm(0); // Cancella l'allarme
-  
-  if (queryTimeoutOccurred) {
-    fprintf(stderr, "Query interrotta per timeout (%d secondi)\n", timeoutSeconds);
-    if (result) {
-      PQclear(result);
-      result = NULL;
+  time_t start_time = time(NULL);
+  while (1) {
+    // Controlla se ci sono dati pronti
+    if (PQconsumeInput(dbConn->conn) == 0) {
+      fprintf(stderr, "Errore nel consumo input: %s", 
+              PQerrorMessage(dbConn->conn));
+      break;
     }
-    // Invia cancellazione della query al server
-    PGcancel *cancel = PQgetCancel(dbConn->conn);
-    if (cancel) {
-      PQcancel(cancel, NULL, 0);
-      PQfreeCancel(cancel);
+
+    if (PQisBusy(dbConn->conn) == 0) {
+      // Query completata
+      PGresult *result = PQgetResult(dbConn->conn);
+      PQsetnonblocking(dbConn->conn, 0);
+      
+      // Consuma eventuali risultati rimanenti
+      PGresult *next;
+      while ((next = PQgetResult(dbConn->conn)) != NULL) {
+        PQclear(next);
+      }
+      
+      return result;
+    }
+
+    // Controlla timeout
+    if (time(NULL) - start_time >= timeoutSeconds) {
+      fprintf(stderr, "Query timeout dopo %d secondi\n", timeoutSeconds);
+      
+      // Cancella query
+      PGcancel *cancel = PQgetCancel(dbConn->conn);
+      if (cancel) {
+        PQcancel(cancel, NULL, 0);
+        PQfreeCancel(cancel);
+      }
+      
+      PQsetnonblocking(dbConn->conn, 0);
+      return NULL;
+    }
+
+    // Aspetta con select()
+    FD_ZERO(&input_mask);
+    FD_SET(sock, &input_mask);
+    timeout.tv_sec = 1;
+    timeout.tv_usec = 0;
+    
+    if (select(sock + 1, &input_mask, NULL, NULL, &timeout) < 0) {
+      fprintf(stderr, "Errore in select()\n");
+      break;
     }
   }
-  
-  return result;
+
+  PQsetnonblocking(dbConn->conn, 0);
+  return NULL;
 }
 
 const char* dbGetErrorMessage(DBConnection *dbConn) {
