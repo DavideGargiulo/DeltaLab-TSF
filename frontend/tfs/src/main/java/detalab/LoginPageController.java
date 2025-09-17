@@ -6,25 +6,15 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.URL;
-import java.util.Optional;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Alert;
-import javafx.scene.control.ButtonType;
 
 
-public class LoginPageController {
-
-    protected static Optional<ButtonType> showAlert(Alert.AlertType alertType, String title, String header, String content){
-        Alert alert = new Alert(alertType);
-        alert.setTitle(title);
-        alert.setHeaderText(header);
-        alert.setContentText(content);
-        return alert.showAndWait();
-    }
+public class LoginPageController extends GeneralPageController {
 
     @FXML
     private void switchToRegister() throws IOException {
@@ -44,13 +34,6 @@ public class LoginPageController {
         String password = passwordField.getText();
 
         try {
-            URL url = new URL("http://localhost:8080/login");
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-
-            // Configurazione della connessione
-            conn.setRequestMethod("POST");
-            conn.setRequestProperty("Content-Type", "application/json");
-            conn.setDoOutput(true);
 
             // Corpo della richiesta JSON
             String jsonInput = "{"
@@ -58,24 +41,12 @@ public class LoginPageController {
                     + "\"password\":\"" + password + "\""
                     + "}";
 
-
-            // Scrittura del body nella richiesta
-            try (OutputStream os = conn.getOutputStream()) {
-                byte[] input = jsonInput.getBytes("utf-8");
-                os.write(input, 0, input.length);
-            }
+            HttpURLConnection conn = makeRequest("login", "POST", jsonInput);
 
             // Lettura della risposta
             int statusCode = conn.getResponseCode();
-            BufferedReader br = new BufferedReader(new InputStreamReader(
-                    (statusCode == 200) ? conn.getInputStream() : conn.getErrorStream(),
-                    "utf-8"));
 
-            StringBuilder response = new StringBuilder();
-            String responseLine;
-            while ((responseLine = br.readLine()) != null) {
-                response.append(responseLine.trim());
-            }
+            String response = readAnswer(conn, statusCode);
 
             // Controllo della risposta
             System.out.println("HTTP Status: " + statusCode);
