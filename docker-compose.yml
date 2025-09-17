@@ -26,6 +26,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    environment:
+      - DB_HOST=host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   # 🧭 pgAdmin 4 (UI web)
   pgadmin:
