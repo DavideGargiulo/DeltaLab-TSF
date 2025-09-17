@@ -2,12 +2,35 @@
 #define AUTH_H
 
 #include <stdbool.h>
+#include "dbConnection.h"
 
-// API
-void authRegister(int client_socket, const char *request);
-void authLogin(int client_socket, const char *request);
+typedef enum {
+    AUTH_OK = 0,
+    AUTH_ERR_DB,
+    AUTH_ERR_NOT_FOUND,
+    AUTH_ERR_EXEC
+} AuthResult;
 
-// Dichiariamo la funzione di parsing JSON (già implementata altrove)
-bool parse_json_field(const char *json, const char *field, char *out);
+typedef struct {
+    int  id;
+    char username[50];
+    char email[100];
+    char lingua[8];
+} AuthUser;
 
-#endif // AUTH_H
+
+AuthResult authRegister(
+    const char *username,
+    const char *password_plain,
+    const char *email,
+    const char *lingua
+);
+
+
+AuthResult authLogin(
+    const char *email,
+    const char *password_plain,
+    AuthUser *out_user
+);
+
+#endif
