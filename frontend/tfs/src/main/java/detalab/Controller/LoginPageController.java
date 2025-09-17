@@ -6,6 +6,8 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.URL;
+import main.java.detalab.DTO.Response;
+import org.json.*;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert.AlertType;
@@ -22,7 +24,7 @@ public class LoginPageController extends GeneralPageController {
     }
 
     @FXML
-    TextField usernameField;
+    TextField emailField;
 
     @FXML
     PasswordField passwordField;
@@ -30,35 +32,27 @@ public class LoginPageController extends GeneralPageController {
     @FXML
     private void Login() throws IOException {
 
-        String username = usernameField.getText();
+        String email = emailField.getText();
         String password = passwordField.getText();
 
         try {
 
             // Corpo della richiesta JSON
             String jsonInput = "{"
-                    + "\"username\":\"" + username + "\","
+                    + "\"email\":\"" + email + "\","
                     + "\"password\":\"" + password + "\""
                     + "}";
 
-            HttpURLConnection conn = makeRequest("login", "POST", jsonInput);
+            Response response = makeRequest("auth/login", "POST", jsonInput, 200);
 
-            // Lettura della risposta
-            int statusCode = conn.getResponseCode();
+            System.out.println("result: " + response.getResult());
+            System.out.println("status: " + response.getStatus());
+            System.out.println("message: " + response.getMessage());
 
-            String response = readAnswer(conn, statusCode);
-
-            // Controllo della risposta
-            System.out.println("HTTP Status: " + statusCode);
-            System.out.println("Risposta: " + response.toString());
-
-            if (statusCode == 200) {
-                System.out.println("Login riuscito!");
-            } else if (statusCode == 401) {
-                System.out.println("Credenziali errate!");
-                showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", "Credenziali errate!");
+            if (response.getStatus() == 200) {
+                App.setRoot("main");
             } else {
-                showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", "Errore imprevisto!");
+                showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", response.getMessage());
             }
 
         } catch (Exception e) {

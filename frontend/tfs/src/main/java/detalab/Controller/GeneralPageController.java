@@ -3,9 +3,15 @@ package detalab;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Optional;
+import java.net.HttpURLConnection;
+import java.io.OutputStream;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import org.json.*;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert.AlertType;
+import main.java.detalab.DTO.Response;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Alert;
 
@@ -21,7 +27,7 @@ public abstract class GeneralPageController {
 
     private String url = "http://localhost:8080/";
 
-    protected HttpURLConnection makeRequest(String endpoint, String method, String body) throws IOException {
+    protected Response makeRequest(String endpoint, String method, String body, int expectedStatus) throws IOException {
         URL url = new URL(this.url + endpoint);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 
@@ -36,12 +42,11 @@ public abstract class GeneralPageController {
             os.write(input, 0, input.length);
         }
         
-        return conn;
-    }
+        // Leggi lo status code
+        int statusCode = conn.getResponseCode();
 
-    protected String readAnswer(HttpURLConnection conn, int statusCode) throws IOException {
         BufferedReader br = new BufferedReader(new InputStreamReader(
-                    (statusCode == 200) ? conn.getInputStream() : conn.getErrorStream(),
+                    (statusCode == expectedStatus) ? conn.getInputStream() : conn.getErrorStream(),
                     "utf-8"));
 
         StringBuilder response = new StringBuilder();
@@ -50,9 +55,14 @@ public abstract class GeneralPageController {
             response.append(line.trim());
         }
 
-        return response.toString();
+        // Chiusura della connessione
+        conn.disconnect();
+
+        String responseBody = response.toString();
+        JSONObject json = new JSONObject(responseBody);
+
+        return new Response(json.getBoolean("result"), statusCode, json.getString("message"));
+        
     }
-
-
 
 }

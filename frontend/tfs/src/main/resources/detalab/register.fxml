@@ -38,19 +38,19 @@
             <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0">
                <children>
                   <Label text="Email" />
-                  <TextField />
+                  <TextField fx:id="emailField" />
                </children>
             </HBox>
             <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0">
                <children>
                   <Label text="Username" />
-                  <PasswordField />
+                  <TextField fx:id="usernameField" />
                </children>
             </HBox>
             <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0">
                <children>
                   <Label text="Password" />
-                  <PasswordField />
+                  <PasswordField fx:id="passwordField" />
                </children>
             </HBox>
             <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0">
@@ -59,7 +59,7 @@
                   <ComboBox fx:id="langBox" prefWidth="150.0" />
                </children>
             </HBox>
-            <Button mnemonicParsing="false" onAction="#loadLanguages" text="Registrati" />
+            <Button mnemonicParsing="false" onAction="#register" text="Registrati" />
             <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0">
                <children>
                   <Label text="Hai già un account?" />
