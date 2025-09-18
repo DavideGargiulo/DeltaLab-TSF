@@ -1,4 +1,4 @@
-package main.java.detalab.DTO;
+package detalab.DTO;
 
 public class Response {
   private boolean result;

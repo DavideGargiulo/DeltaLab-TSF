@@ -6,7 +6,9 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.URL;
-import main.java.detalab.DTO.Response;
+import detalab.DTO.Response;
+import detalab.DTO.User;
+import detalab.DTO.LoggedUser;
 import org.json.*;
 
 import javafx.fxml.FXML;
@@ -50,6 +52,7 @@ public class LoginPageController extends GeneralPageController {
             System.out.println("message: " + response.getMessage());
 
             if (response.getStatus() == 200) {
+                LoggedUser.getInstance(new User(email, null, null));
                 App.setRoot("main");
             } else {
                 showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", response.getMessage());

@@ -8,10 +8,10 @@ import java.io.OutputStream;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import org.json.*;
+import detalab.DTO.Response;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert.AlertType;
-import main.java.detalab.DTO.Response;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Alert;
 

@@ -13,7 +13,7 @@
    <top>
       <AnchorPane prefHeight="100.0" prefWidth="600.0" BorderPane.alignment="CENTER">
          <children>
-            <Label layoutX="76.0" layoutY="57.0" text="WELCOME LABEL WITH NICKNAME" AnchorPane.leftAnchor="20.0" AnchorPane.topAnchor="20.0" />
+            <Label fx:id="welcomeLabel" layoutX="76.0" layoutY="57.0" text="WELCOME LABEL WITH NICKNAME" AnchorPane.leftAnchor="20.0" AnchorPane.topAnchor="20.0" />
             <ImageView fitHeight="150.0" fitWidth="200.0" layoutX="357.0" layoutY="29.0" pickOnBounds="true" preserveRatio="true" AnchorPane.rightAnchor="20.0" AnchorPane.topAnchor="20.0">
                <image>
                   <Image url="@../imgs/logo_no_bg.png" />

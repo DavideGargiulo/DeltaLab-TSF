@@ -7,12 +7,11 @@ import java.util.ResourceBundle;
 import java.util.List;
 import java.util.Arrays;
 import java.net.HttpURLConnection;
-import main.java.detalab.DTO.Response;
+import detalab.DTO.Response;
+import detalab.DTO.LanguageSet;
 import org.json.*;
 
 import javafx.scene.control.Alert.AlertType;
-import main.java.detalab.DTO.Response;
-import main.java.detalab.DTO.LanguageSet;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ComboBox;
