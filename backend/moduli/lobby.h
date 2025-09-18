@@ -33,6 +33,8 @@ char* getAllLobbies();
 
 char* getLobbyById(const char* id);
 
+char* getPlayerInfoById(int playerId);
+
 Lobby* createLobby(int idCreator, bool isPrivate, LobbyRotation rotation);
 
 char* createLobbyEndpoint(const char* requestBody);

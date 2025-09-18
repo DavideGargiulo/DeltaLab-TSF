@@ -549,3 +549,70 @@ char* deleteLobby(const char* lobbyId, int creatorId) {
   
   return strdup("{\"result\":true,\"message\":\"Lobby eliminata con successo\",\"content\":null}");
 }
+
+// Funzione per ottenere informazioni di un giocatore dato il suo ID
+char* getPlayerInfoById(int playerId) {
+  if (playerId <= 0) {
+    return strdup("{\"result\":false,\"message\":\"ID giocatore non valido\",\"content\":null}");
+  }
+
+  // Connessione al database
+  const char *host = getenv("DB_HOST");
+  if (!host) host = "db";
+
+  DBConnection *conn = dbConnectWithOptions(host, "deltalabtsf", "postgres", "admin", 30);
+  if (!conn || !dbIsConnected(conn)) {
+    if (conn) dbDisconnect(conn);
+    return strdup("{\"result\":false,\"message\":\"Connessione al database fallita\",\"content\":null}");
+  }
+
+  // Query per ottenere informazioni del giocatore
+  const char *sql = "SELECT id, nickname, email, lingua FROM account WHERE id = $1";
+  
+  char playerIdStr[16];
+  snprintf(playerIdStr, sizeof(playerIdStr), "%d", playerId);
+  const char *params[1] = { playerIdStr };
+
+  PGresult *res = dbExecutePrepared(conn, sql, 1, params);
+  if (!res) {
+    dbDisconnect(conn);
+    return strdup("{\"result\":false,\"message\":\"Errore query database\",\"content\":null}");
+  }
+
+  int nrows = PQntuples(res);
+  if (nrows == 0) {
+    PQclear(res);
+    dbDisconnect(conn);
+    return strdup("{\"result\":false,\"message\":\"Giocatore non trovato\",\"content\":null}");
+  }
+
+  // Estrai i dati dalla query
+  int col_id = PQfnumber(res, "id");
+  int col_nickname = PQfnumber(res, "nickname");
+  int col_email = PQfnumber(res, "email");
+  int col_lingua = PQfnumber(res, "lingua");
+
+  const char *id = PQgetisnull(res, 0, col_id) ? "" : PQgetvalue(res, 0, col_id);
+  const char *nickname = PQgetisnull(res, 0, col_nickname) ? "" : PQgetvalue(res, 0, col_nickname);
+  const char *email = PQgetisnull(res, 0, col_email) ? "" : PQgetvalue(res, 0, col_email);
+  const char *lingua = PQgetisnull(res, 0, col_lingua) ? "it" : PQgetvalue(res, 0, col_lingua);
+
+  // Alloca buffer per la risposta JSON
+  char *json_response = malloc(1024);
+  if (!json_response) {
+    PQclear(res);
+    dbDisconnect(conn);
+    return strdup("{\"result\":false,\"message\":\"Errore memoria\",\"content\":null}");
+  }
+
+  // Costruisci la risposta JSON
+  snprintf(json_response, 1024,
+    "{\"result\":true,\"message\":\"Giocatore trovato\",\"content\":{"
+    "\"id\":%s,\"nickname\":\"%s\",\"email\":\"%s\",\"lingua\":\"%s\"}}",
+    id, nickname, email, lingua);
+
+  PQclear(res);
+  dbDisconnect(conn);
+  
+  return json_response;
+}

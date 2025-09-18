@@ -110,6 +110,29 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
     if (mg_strcmp(hm->method, mg_str("GET")) == 0) {
       struct mg_str path = hm->uri;
 
+      // GET /user/:id (informazioni giocatore)
+      if (path.len > 6 && memcmp(path.buf, "/user/", 6) == 0) {
+        size_t id_len = path.len - 6;  // Cambiato da 8 a 6
+        if (id_len >= 1 && id_len <= 10) {  // ID da 1 a 10 cifre
+          char player_id_str[12] = {0};
+          snprintf(player_id_str, sizeof(player_id_str), "%.*s", (int)id_len, path.buf + 6);  // Cambiato da 8 a 6
+          
+          // Converti a intero
+          int player_id = atoi(player_id_str);
+          
+          char *response = getPlayerInfoById(player_id);
+          
+          int status_code = (strstr(response, "\"result\":true") != NULL) ? 200 : 404;
+          
+          send_json(c, status_code, response);
+          free(response);
+          return;
+        }
+        
+        send_json(c, 400, "{\"result\":false,\"message\":\"ID giocatore non valido\",\"content\":null}");
+        return;
+      }
+
       // GET /lobby/:id (lobby specifica)
       if (path.len > 7 && memcmp(path.buf, "/lobby/", 7) == 0) {
         size_t id_len = path.len - 7;
