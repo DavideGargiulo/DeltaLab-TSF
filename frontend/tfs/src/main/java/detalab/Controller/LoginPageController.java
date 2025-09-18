@@ -50,9 +50,11 @@ public class LoginPageController extends GeneralPageController {
             System.out.println("result: " + response.getResult());
             System.out.println("status: " + response.getStatus());
             System.out.println("message: " + response.getMessage());
+            System.out.println("content: " + response.getContent() + "\n");
 
             if (response.getStatus() == 200) {
-                LoggedUser.getInstance(new User(email, null, null));
+                JSONObject json = new JSONObject(response.getContent());
+                LoggedUser.getInstance(new User(json.getInt("id"), json.getString("email"), json.getString("username"), json.getString("lingua")));
                 App.setRoot("main");
             } else {
                 showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", response.getMessage());

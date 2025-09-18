@@ -56,6 +56,7 @@ public class RegisterPageController extends GeneralPageController {
             System.out.println("result: " + response.getResult());
             System.out.println("status: " + response.getStatus());
             System.out.println("message: " + response.getMessage());
+            System.out.println("content: " + response.getContent() + "\n");
     
             if (response.getStatus() == 201) {
                 showAlert(AlertType.INFORMATION, "Successo", "Registrazione avvenuta con successo.", "Benvenuto in DeltaLab!");

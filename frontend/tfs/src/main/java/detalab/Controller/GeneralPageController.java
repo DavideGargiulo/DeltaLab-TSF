@@ -14,8 +14,18 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Alert;
+import javafx.scene.Scene;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.layout.BorderPane;
+
 
 public abstract class GeneralPageController {
+
+    @FXML
+    private BorderPane mainPage;
 
     protected static Optional<ButtonType> showAlert(Alert.AlertType alertType, String title, String header, String content){
         Alert alert = new Alert(alertType);
@@ -27,19 +37,27 @@ public abstract class GeneralPageController {
 
     private String url = "http://localhost:8080/";
 
+    protected Response makeRequest(String endpoint, String method, int expectedStatus) throws IOException {
+        return makeRequest(endpoint, method, "", expectedStatus);
+    }
+
     protected Response makeRequest(String endpoint, String method, String body, int expectedStatus) throws IOException {
         URL url = new URL(this.url + endpoint);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 
         // Configurazione della connessione
         conn.setRequestMethod(method);
-        conn.setRequestProperty("Content-Type", "application/json");
-        conn.setDoOutput(true);
         
-        // Scrittura del body nella richiesta
-        try (OutputStream os = conn.getOutputStream()) {
-            byte[] input = body.getBytes("utf-8");
-            os.write(input, 0, input.length);
+        if (method.equals("POST") || method.equals("PUT")) {
+
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setDoOutput(true);
+
+            // Scrittura del body nella richiesta
+            try (OutputStream os = conn.getOutputStream()) {
+                byte[] input = body.getBytes("utf-8");
+                os.write(input, 0, input.length);
+            }
         }
         
         // Leggi lo status code
@@ -61,8 +79,23 @@ public abstract class GeneralPageController {
         String responseBody = response.toString();
         JSONObject json = new JSONObject(responseBody);
 
-        return new Response(json.getBoolean("result"), statusCode, json.getString("message"));
+        return new Response(json.getBoolean("result"), statusCode, json.getString("message"), json.optString("content", null));
         
     }
+
+    // public void showDialog(String fxml, double width, double height, String title, String root) throws IOException{
+
+    //     Stage stage = new Stage();
+    //     Scene scene;
+
+    //     stage.initOwner((Stage) mainPage.getScene().getWindow());
+    //     stage.initModality(Modality.WINDOW_MODAL);
+    //     scene = new Scene(App.loadFXML(fxml).load(), width, height);
+    //     stage.setScene(scene);
+    //     stage.setTitle(title);
+    //     stage.setResizable(false);
+    //     stage.showAndWait();
+    //     App.setRoot(root);
+    // }
 
 }

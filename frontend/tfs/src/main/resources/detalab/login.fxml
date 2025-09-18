@@ -37,13 +37,13 @@
             <VBox alignment="CENTER" spacing="10.0">
                <children>
                   <Label text="Email" />
-                  <TextField fx:id="emailField" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefWidth="250.0" />
+                  <TextField fx:id="emailField" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefWidth="250.0" text="mario@mail.com" />
                </children>
             </VBox>
             <VBox alignment="CENTER" spacing="10.0">
                <children>
                   <Label text="Password" />
-                  <PasswordField fx:id="passwordField" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefWidth="250.0" />
+                  <PasswordField fx:id="passwordField" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefWidth="250.0" text="password123" />
                </children>
             </VBox>
             <Button mnemonicParsing="false" onAction="#Login" text="Accedi" />
