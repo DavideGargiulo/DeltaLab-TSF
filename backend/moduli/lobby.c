@@ -64,7 +64,8 @@ char* getAllLobbies() {
     return strdup("{\"result\":false,\"message\":\"Connessione al database fallita\",\"content\":null}");
   }
 
-  const char *sql = "SELECT * FROM lobby";
+  // Modifica la query per escludere le lobby private
+  const char *sql = "SELECT * FROM lobby WHERE is_private = false OR is_private IS NULL";
   PGresult *res = dbExecuteQueryWithTimeout(conn, sql, 10);
   if (!res) {
     dbDisconnect(conn);
@@ -90,7 +91,7 @@ char* getAllLobbies() {
   }
 
   // Inizia la risposta JSON
-  strcpy(json_response, "{\"result\":true,\"message\":\"Lobby trovate\",\"content\":[");
+  strcpy(json_response, "{\"result\":true,\"message\":\"Lobby pubbliche trovate\",\"content\":[");
   
   char temp_buffer[512];
   bool first_lobby = true;
@@ -234,6 +235,27 @@ Lobby* createLobby(int idCreator, bool isPrivate, LobbyRotation rotation) {
     return NULL;
   }
 
+  const char *user_check_sql = "SELECT 1 FROM account WHERE id = $1 LIMIT 1";
+  char idCreatorStr[16];
+  snprintf(idCreatorStr, sizeof(idCreatorStr), "%d", idCreator);
+  const char *user_params[1] = { idCreatorStr };
+  
+  PGresult *user_res = dbExecutePrepared(conn, user_check_sql, 1, user_params);
+  if (!user_res) {
+    fprintf(stderr, "Errore nella verifica dell'utente\n");
+    dbDisconnect(conn);
+    return NULL;
+  }
+
+  int user_exists = PQntuples(user_res);
+  PQclear(user_res);
+  
+  if (user_exists == 0) {
+    fprintf(stderr, "Utente con ID %d non trovato\n", idCreator);
+    dbDisconnect(conn);
+    return NULL;
+  }
+
   // Genera ID univoco per la lobby
   char lobbyId[7];
   int attempts = 0;
@@ -268,7 +290,6 @@ Lobby* createLobby(int idCreator, bool isPrivate, LobbyRotation rotation) {
   const char *connectedUsers = "1"; // creatore è il primo connesso
   
   // Converti idCreator da int a stringa
-  char idCreatorStr[16];
   snprintf(idCreatorStr, sizeof(idCreatorStr), "%d", idCreator);
 
   const char *paramValues[6] = {
@@ -345,7 +366,7 @@ char* createLobbyEndpoint(const char* requestBody) {
   if (!requestBody) {
     return strdup("{\"result\":false,\"message\":\"Request body mancante\",\"content\":null}");
   }
-  
+
   int idCreator = 0;
   bool isPrivate = false;
   LobbyRotation rotation = CLOCKWISE;
