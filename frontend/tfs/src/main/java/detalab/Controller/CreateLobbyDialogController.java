@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import detalab.DTO.LoggedUser;
 import detalab.DTO.Response;
 import detalab.DTO.User;
+import detalab.DTO.CurrentLobby;
 import detalab.DTO.Lobby;
 import org.json.*;
 
@@ -66,12 +67,51 @@ public class CreateLobbyDialogController extends GeneralPageController {
 
             if (response.getStatus() == 201) {
                 showAlert(AlertType.INFORMATION, "Successo", "Lobby creata con successo.", "Ora puoi giocare!");
+                setLobbySession(new JSONObject(response.getContent()).getString("id"));
                 closeDialog();
             } else {
                 showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", response.getMessage());
             }
             
         } catch (IOException e) {
+            e.printStackTrace();
+            showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", "Errore imprevisto!");
+        }
+
+    }
+
+    private void setLobbySession(String lobbyID) {
+
+        CurrentLobby.cleanLobby();
+
+        try {
+            Response response = makeRequest("lobby/" + lobbyID, "GET", 200);
+
+            System.out.println("result: " + response.getResult());
+            System.out.println("status: " + response.getStatus());
+            System.out.println("message: " + response.getMessage());
+            System.out.println("content: " + response.getContent() + "\n");
+
+            if (response.getStatus() == 200) {
+                JSONObject obj = new JSONObject(response.getContent());
+
+                Lobby lobby = new Lobby(
+                    obj.getString("id"),
+                    obj.getInt("utentiConnessi"),
+                    obj.getString("rotation"),
+                    getUsernameById(obj.getString("creator")),
+                    obj.getString("status")
+                );
+
+                ArrayList<User> users = new ArrayList<>();
+                users.add(LoggedUser.getInstance());
+                CurrentLobby.getInstance(lobby, users, new ArrayList<User>());
+
+
+            } else {
+                showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", response.getMessage());
+            }
+        } catch (Exception e) {
             e.printStackTrace();
             showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", "Errore imprevisto!");
         }

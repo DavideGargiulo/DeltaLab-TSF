@@ -80,4 +80,31 @@ public abstract class GeneralPageController {
         
     }
 
+    protected String getUsernameById(String userID) {
+        
+        String ret = "Sconosciuto";
+
+        try {
+
+            Response response = makeRequest("user/" + userID, "GET", 200);
+
+            System.out.println("result: " + response.getResult());
+            System.out.println("status: " + response.getStatus());
+            System.out.println("message: " + response.getMessage());
+            System.out.println("content: " + response.getContent() + "\n");
+
+            if (response.getStatus() == 200) {
+                String content = response.getContent();
+                JSONObject obj = new JSONObject(content);
+                ret = obj.getString("nickname").trim();
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", "Errore imprevisto!");
+        }
+
+        return ret;
+    }
+
 }
