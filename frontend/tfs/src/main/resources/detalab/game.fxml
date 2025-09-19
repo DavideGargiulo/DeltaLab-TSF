@@ -36,7 +36,7 @@
    <center>
       <AnchorPane prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER">
          <children>
-            <Label layoutX="170.0" layoutY="14.0" text="TFS" AnchorPane.leftAnchor="170.0" AnchorPane.rightAnchor="170.0" AnchorPane.topAnchor="14.0">
+            <Label fx:id="codeLabel" alignment="CENTER" layoutX="170.0" layoutY="14.0" text="Codice" textAlignment="CENTER" AnchorPane.leftAnchor="120.0" AnchorPane.rightAnchor="120.0" AnchorPane.topAnchor="14.0">
                <font>
                   <Font name="System Bold" size="36.0" />
                </font>

@@ -26,8 +26,6 @@ import javafx.stage.Stage;
 import javafx.scene.Node;
 
 
-
-
 public class CreateLobbyDialogController extends GeneralPageController {
 
     @FXML
@@ -37,10 +35,9 @@ public class CreateLobbyDialogController extends GeneralPageController {
     private CheckBox privateCheckBox;
 
     @FXML
-    private void closeDialog(ActionEvent event) {
-        // Recupera lo stage dal nodo sorgente dell'evento
-        Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
-        stage.close();
+    public void closeDialog() {
+    Stage stage = (Stage) rotationBox.getScene().getWindow();
+    stage.close();
     }
 
     @FXML
@@ -69,7 +66,7 @@ public class CreateLobbyDialogController extends GeneralPageController {
 
             if (response.getStatus() == 201) {
                 showAlert(AlertType.INFORMATION, "Successo", "Lobby creata con successo.", "Ora puoi giocare!");
-                closeDialog(new ActionEvent());
+                closeDialog();
             } else {
                 showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", response.getMessage());
             }

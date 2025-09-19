@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.ArrayList;
 import detalab.DTO.LoggedUser;
 import detalab.DTO.Response;
+import detalab.DTO.User;
+import detalab.DTO.CurrentLobby;
 import detalab.DTO.Lobby;
 import org.json.*;
 
@@ -132,36 +134,25 @@ public class MainPageController extends GeneralPageController {
     }
 
     @FXML
-    private void showNewLobbyDialog() throws IOException {
-    // Carica l'FXML della nuova finestra
-    FXMLLoader fxmlLoader = new FXMLLoader(App.class.getResource("NewLobbyDialog.fxml"));
-    Parent dialogRoot = fxmlLoader.load();
-
-    // Crea una nuova scena
-    Scene dialogScene = new Scene(dialogRoot);
-
-    // Crea il nuovo Stage
-    Stage dialogStage = new Stage();
-    dialogStage.setTitle("Crea nuova Lobby");
-    dialogStage.setScene(dialogScene);
-
-    // Imposta la finestra principale come owner e la modalità modale
-    // mainPage è il BorderPane iniettato in questo controller
-    Stage ownerStage = (Stage) mainPage.getScene().getWindow();
-    dialogStage.initOwner(ownerStage);
-    dialogStage.initModality(Modality.WINDOW_MODAL);
-    // Se vuoi che blocchi tutta l'app, puoi usare Modality.APPLICATION_MODAL
-
-    // (Opzionale) Imposta dimensioni minime o massime
-    dialogStage.setResizable(false);
-
-    // Mostra la finestra in modalità bloccante
-    dialogStage.showAndWait();
-
-    // --- qui sotto eventuale logica dopo la chiusura del dialog ---
-    // Ad esempio, ricaricare la lista lobbies se la creazione ha avuto successo
-    loadLobbies();
-}
+    private void showNewLobbyDialog() {
+        try {
+            FXMLLoader fxmlLoader = new FXMLLoader(App.class.getResource("NewLobbyDialog.fxml"));
+            Parent dialogRoot = fxmlLoader.load();
+            Scene dialogScene = new Scene(dialogRoot);
+            Stage dialogStage = new Stage();
+            dialogStage.setTitle("Crea nuova Lobby");
+            dialogStage.setScene(dialogScene);
+            Stage ownerStage = (Stage) mainPage.getScene().getWindow();
+            dialogStage.initOwner(ownerStage);
+            dialogStage.initModality(Modality.WINDOW_MODAL);
+            dialogStage.setResizable(false);
+            dialogStage.showAndWait();
+            loadLobbies();
+        } catch (IOException e) {
+            e.printStackTrace();
+            showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", "Non è stato possibile aprire la finestra.");
+        }
+    }
 
 
     @FXML
@@ -175,11 +166,6 @@ public class MainPageController extends GeneralPageController {
         App.setRoot("login");
     }
 
-    @FXML
-    private void enterGame() throws IOException {
-        App.setRoot("game");
-    }
-
     private void setWelcomeMessage() {
         try {
             welcomeLabel.setText("Benvenuto, " + LoggedUser.getInstance().getUsername() + "!");
@@ -187,6 +173,42 @@ public class MainPageController extends GeneralPageController {
             e.printStackTrace();
             welcomeLabel.setText("Benvenuto, utente!");
         }
+    }
+
+    private void enterLobby(Lobby lobby){
+
+        try {
+            CurrentLobby.getInstance(lobby, new ArrayList<User>(), new ArrayList<User>());
+            App.setRoot("game");
+        } catch (Exception e) {
+            e.printStackTrace();
+            showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", "Errore imprevisto!");
+        }
+        
+        //TODO: Rimuovere il commento quando il backend supporterà l'entrata in lobby
+
+        // try {
+
+        //     Response response = makeRequest("lobby/" + lobbyID + "/join", "POST", 200);
+
+        //     String content = response.getContent();
+
+        //     System.out.println("result: " + response.getResult());
+        //     System.out.println("status: " + response.getStatus());
+        //     System.out.println("message: " + response.getMessage());
+        //     System.out.println("content: " + response.getContent() + "\n");
+
+        //     if (response.getStatus() == 200) {
+        //         App.setRoot("game");
+        //     } else {
+        //         showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", response.getMessage());
+        //     }
+
+            
+        // } catch (Exception e) {
+        //     e.printStackTrace();
+        //     showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", "Errore imprevisto!");
+        // }
     }
 
     @FXML
@@ -200,6 +222,19 @@ public class MainPageController extends GeneralPageController {
         lobbyRotation.setCellValueFactory(new PropertyValueFactory<Lobby, String>("lobbyRotation"));
         lobbyCreator.setCellValueFactory(new PropertyValueFactory<Lobby, String>("lobbyCreator"));
         lobbyStatus.setCellValueFactory(new PropertyValueFactory<Lobby, String>("lobbyStatus"));
+
+        // Set row factory for lobbyList
+        lobbyList.setRowFactory(tv -> {
+            javafx.scene.control.TableRow<Lobby> row = new javafx.scene.control.TableRow<>();
+            row.setOnMouseClicked(event -> {
+                if (event.getClickCount() == 2 && (!row.isEmpty())) {
+                    Lobby lobby = row.getItem();
+                    System.out.println(lobby.toString());
+                    enterLobby(lobby);
+                }
+            });
+            return row;
+        });
 
         loadLobbies();
     }

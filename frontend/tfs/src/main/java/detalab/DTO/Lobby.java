@@ -36,4 +36,15 @@ public class Lobby {
     return status;
   }
 
+  @Override
+  public String toString() {
+    return "Lobby{" +
+        "ID='" + ID + '\'' +
+        ", users=" + users +
+        ", rotation='" + rotation + '\'' +
+        ", creator='" + creator + '\'' +
+        ", status='" + status + '\'' +
+        '}';
+  }
+
 }

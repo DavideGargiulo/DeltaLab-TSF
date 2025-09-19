@@ -39,7 +39,7 @@
                </columnResizePolicy>
             </TableView>
             <Button layoutX="50.0" layoutY="58.0" mnemonicParsing="false" onAction="#showNewLobbyDialog" text="Crea Partita" AnchorPane.leftAnchor="20.0" AnchorPane.topAnchor="60.0" />
-            <Button layoutX="374.0" layoutY="60.0" mnemonicParsing="false" onAction="#enterGame" text="Partita Rapida" AnchorPane.leftAnchor="110.0" AnchorPane.topAnchor="60.0" />
+            <Button layoutX="374.0" layoutY="60.0" mnemonicParsing="false" text="Partita Rapida" AnchorPane.leftAnchor="110.0" AnchorPane.topAnchor="60.0" />
             <Button layoutX="384.0" layoutY="70.0" mnemonicParsing="false" text="Unisciti" AnchorPane.rightAnchor="180.0" AnchorPane.topAnchor="60.0" />
             <TextField layoutX="476.0" layoutY="60.0" promptText="Codice Stanza" AnchorPane.rightAnchor="20.0" AnchorPane.topAnchor="60.0" />
             <Button layoutX="50.0" layoutY="361.0" mnemonicParsing="false" onAction="#exit" text="Esci" AnchorPane.bottomAnchor="15.0" AnchorPane.leftAnchor="20.0" />
