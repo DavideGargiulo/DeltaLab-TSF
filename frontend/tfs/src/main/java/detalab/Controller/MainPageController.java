@@ -3,7 +3,9 @@ package detalab;
 import java.util.ResourceBundle;
 import java.net.URL;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.util.List;
+import java.util.Random;
 import java.util.ArrayList;
 import detalab.DTO.LoggedUser;
 import detalab.DTO.Response;
@@ -15,6 +17,7 @@ import org.json.*;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.Alert.AlertType;
@@ -31,6 +34,9 @@ public class MainPageController extends GeneralPageController {
 
     @FXML
     private BorderPane mainPage;
+
+    @FXML
+    private TextField codeField;
 
     @FXML
     Label welcomeLabel;
@@ -139,11 +145,68 @@ public class MainPageController extends GeneralPageController {
 
     private void setWelcomeMessage() {
         try {
-            welcomeLabel.setText("Benvenuto, " + LoggedUser.getInstance().getUsername() + "!");
+            welcomeLabel.setText("Benvenuto,\n" + LoggedUser.getInstance().getUsername() + "!");
         } catch (Exception e) {
             e.printStackTrace();
-            welcomeLabel.setText("Benvenuto, utente!");
+            welcomeLabel.setText("Benvenuto,\nutente!");
         }
+    }
+
+    @FXML
+    private void joinRandomLobby() {    
+        if (lobbyList.getItems().isEmpty()) {
+            showAlert(AlertType.INFORMATION, "Nessuna lobby disponibile", null, "Non ci sono lobby disponibili a cui unirsi.");
+            return;
+        }
+
+        ArrayList<Lobby> randomLobby = new ArrayList<>();
+        randomLobby.addAll(lobbyList.getItems());
+
+        Random rand = new Random();
+
+        enterLobby(randomLobby.get(rand.nextInt(randomLobby.size())));
+    }
+
+    @FXML
+    private void joinLobbyWithID() {
+        String lobbyID = codeField.getText();
+        if (lobbyID.isEmpty()) {
+            showAlert(AlertType.INFORMATION, "Codice mancante", null, "Inserisci un codice per unirti a una lobby.");
+            return;
+        }
+
+        try {
+            
+            Response response = makeRequest("lobby/" + lobbyID, "GET", 200);
+
+            String content = response.getContent();
+
+            System.out.println("result: " + response.getResult());
+            System.out.println("status: " + response.getStatus());
+            System.out.println("message: " + response.getMessage());
+            System.out.println("content: " + response.getContent() + "\n");
+
+            if (response.getStatus() == 200) {
+                JSONObject obj = new JSONObject(content);
+
+                String id = obj.getString("id");
+                int users = obj.getInt("utentiConnessi");
+                String rotation = obj.getString("rotation");
+                String status = obj.getString("status");
+                String creator = getUsernameById(obj.getString("creator").trim());
+
+                Lobby lobby = new Lobby(id, users, rotation, creator, status);
+                enterLobby(lobby);
+            } else {
+                showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", response.getMessage());
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", "Errore imprevisto!");
+        }
+
+        // richiedi lobby con ID = lobbyID
     }
 
     private void enterLobby(Lobby lobby){
