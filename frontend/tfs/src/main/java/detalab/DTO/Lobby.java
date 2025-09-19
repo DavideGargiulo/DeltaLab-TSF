@@ -2,13 +2,13 @@ package detalab.DTO;
 
 public class Lobby {
   
-  private int ID;
+  private String ID;
   private int users;
   private String rotation;
   private String creator;
   private String status;
 
-  public Lobby(int ID, int users, String rotation, String creator, String status) {
+  public Lobby(String ID, int users, String rotation, String creator, String status) {
     this.ID = ID;
     this.users = users;
     this.rotation = rotation;
@@ -16,7 +16,7 @@ public class Lobby {
     this.status = status;
   }
 
-  public int getLobbyID() {
+  public String getLobbyID() {
     return ID;
   }
 

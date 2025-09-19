@@ -17,10 +17,19 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Alert;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.stage.Stage;
+import javafx.stage.Modality;
+import javafx.scene.layout.BorderPane;
 
 
 
 public class MainPageController extends GeneralPageController {
+
+    @FXML
+    private BorderPane mainPage;
 
     @FXML
     Label welcomeLabel;
@@ -29,7 +38,7 @@ public class MainPageController extends GeneralPageController {
     private TableView<Lobby> lobbyList;
 
     @FXML
-    private TableColumn<Lobby, Integer> lobbyID;
+    private TableColumn<Lobby, String> lobbyID;
 
     @FXML
     private TableColumn<Lobby, Integer> lobbyUsers;
@@ -82,7 +91,7 @@ public class MainPageController extends GeneralPageController {
         for (int i = 0; i < array.length(); i++) {
             JSONObject obj = array.getJSONObject(i);
 
-            int id = Integer.parseInt(obj.getString("id").trim());
+            String id = obj.getString("id");
             int users = obj.getInt("utentiConnessi");
             String rotation = obj.getString("rotation");
             String status = obj.getString("status");
@@ -122,10 +131,38 @@ public class MainPageController extends GeneralPageController {
         return ret;
     }
 
-    // @FXML
-    // private void showNewLobbyDialog() throws IOException {
-    //     showDialog("NewLobbyDialog", 327, 150, "Creazione Lobby", "main");
-    // }
+    @FXML
+    private void showNewLobbyDialog() throws IOException {
+    // Carica l'FXML della nuova finestra
+    FXMLLoader fxmlLoader = new FXMLLoader(App.class.getResource("NewLobbyDialog.fxml"));
+    Parent dialogRoot = fxmlLoader.load();
+
+    // Crea una nuova scena
+    Scene dialogScene = new Scene(dialogRoot);
+
+    // Crea il nuovo Stage
+    Stage dialogStage = new Stage();
+    dialogStage.setTitle("Crea nuova Lobby");
+    dialogStage.setScene(dialogScene);
+
+    // Imposta la finestra principale come owner e la modalità modale
+    // mainPage è il BorderPane iniettato in questo controller
+    Stage ownerStage = (Stage) mainPage.getScene().getWindow();
+    dialogStage.initOwner(ownerStage);
+    dialogStage.initModality(Modality.WINDOW_MODAL);
+    // Se vuoi che blocchi tutta l'app, puoi usare Modality.APPLICATION_MODAL
+
+    // (Opzionale) Imposta dimensioni minime o massime
+    dialogStage.setResizable(false);
+
+    // Mostra la finestra in modalità bloccante
+    dialogStage.showAndWait();
+
+    // --- qui sotto eventuale logica dopo la chiusura del dialog ---
+    // Ad esempio, ricaricare la lista lobbies se la creazione ha avuto successo
+    loadLobbies();
+}
+
 
     @FXML
     private void test() {
@@ -159,7 +196,7 @@ public class MainPageController extends GeneralPageController {
 
         //Initalize table columns
         lobbyUsers.setCellValueFactory(new PropertyValueFactory<Lobby, Integer>("lobbyUsers"));
-        lobbyID.setCellValueFactory(new PropertyValueFactory<Lobby, Integer>("lobbyID"));
+        lobbyID.setCellValueFactory(new PropertyValueFactory<Lobby, String>("lobbyID"));
         lobbyRotation.setCellValueFactory(new PropertyValueFactory<Lobby, String>("lobbyRotation"));
         lobbyCreator.setCellValueFactory(new PropertyValueFactory<Lobby, String>("lobbyCreator"));
         lobbyStatus.setCellValueFactory(new PropertyValueFactory<Lobby, String>("lobbyStatus"));

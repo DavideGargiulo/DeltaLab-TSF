@@ -24,9 +24,6 @@ import javafx.scene.layout.BorderPane;
 
 public abstract class GeneralPageController {
 
-    @FXML
-    private BorderPane mainPage;
-
     protected static Optional<ButtonType> showAlert(Alert.AlertType alertType, String title, String header, String content){
         Alert alert = new Alert(alertType);
         alert.setTitle(title);
@@ -82,20 +79,5 @@ public abstract class GeneralPageController {
         return new Response(json.getBoolean("result"), statusCode, json.getString("message"), json.optString("content", null));
         
     }
-
-    // public void showDialog(String fxml, double width, double height, String title, String root) throws IOException{
-
-    //     Stage stage = new Stage();
-    //     Scene scene;
-
-    //     stage.initOwner((Stage) mainPage.getScene().getWindow());
-    //     stage.initModality(Modality.WINDOW_MODAL);
-    //     scene = new Scene(App.loadFXML(fxml).load(), width, height);
-    //     stage.setScene(scene);
-    //     stage.setTitle(title);
-    //     stage.setResizable(false);
-    //     stage.showAndWait();
-    //     App.setRoot(root);
-    // }
 
 }
