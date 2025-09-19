@@ -9,9 +9,9 @@
 static volatile int queryTimeoutOccurred = 0;
 
 // Handler per il timeout
-static void timeoutHandler(int sig) {
-  queryTimeoutOccurred = 1;
-}
+// static void timeoutHandler(int sig) {
+//   queryTimeoutOccurred = 1;
+// }
 
 DBConnection* dbConnect(const char *conninfo) {
   return dbConnectWithOptions(NULL, NULL, NULL, NULL, 30);

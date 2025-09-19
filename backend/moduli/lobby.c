@@ -42,17 +42,6 @@ static bool lobbyIdExists(DBConnection *conn, const char *id) {
   return nrows > 0;
 }
 
-static void send_json(int client_socket, int status_code, const char* status_text, const char* json_body) {
-  char header[256];
-  snprintf(header, sizeof(header),
-            "HTTP/1.1 %d %s\r\n"
-            "Content-Type: application/json\r\n"
-            "Content-Length: %zu\r\n\r\n",
-            status_code, status_text, strlen(json_body));
-  send(client_socket, header, strlen(header), 0);
-  send(client_socket, json_body, strlen(json_body), 0);
-}
-
 // Nuova funzione che restituisce JSON invece di inviarlo
 char* getAllLobbies() {
   const char *host = getenv("DB_HOST");

@@ -41,6 +41,8 @@ char* createLobbyEndpoint(const char* requestBody);
 
 char* deleteLobby(const char* lobbyId, int creatorId);
 
+void destroyLobby(Lobby *lobby);
+
 // bool removePlayerFromLobby(Lobby* lobby, const char* playerId);
 
 #endif

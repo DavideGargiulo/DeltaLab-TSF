@@ -16,6 +16,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    networks:
+      - app-network
 
   # 🖥️ Backend C
   backend-c:
@@ -26,10 +28,36 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      libretranslate:
+        condition: service_started
     environment:
       - DB_HOST=host.docker.internal
+      - TRANSLATE_SERVICE=http://libretranslate:5000
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - app-network
+
+  libretranslate:
+    image: libretranslate/libretranslate:latest
+    container_name: libretranslate
+    restart: unless-stopped
+    ports:
+      - "6000:6000"
+    environment:
+      - LT_LOAD_ONLY=en,it,fr,es,de  # Specify languages you need
+      - LT_THREADS=4
+      - LT_API_KEYS=false  # Disable API keys for development
+    volumes:
+      - libretranslate_cache:/home/libretranslate/.cache
+    networks:
+      - app-network
+    # Optional: Add healthcheck for LibreTranslate
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6000/languages"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # 🧭 pgAdmin 4 (UI web)
   pgadmin:
@@ -47,7 +75,14 @@ services:
         condition: service_healthy
     volumes:
       - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - app-network
 
 volumes:
   postgres_data:
   pgadmin_data:
+  libretranslate_cache:
+
+networks:
+  app-network:
+    driver: bridge

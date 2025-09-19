@@ -5,7 +5,7 @@
 
 #include "moduli/auth.h"
 #include "moduli/lobby.h"
-// #include "moduli/dbConnection.h"
+#include "moduli/translate.h"
 
 static const char *s_listen = "http://0.0.0.0:8080";
 
@@ -225,6 +225,27 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
         send_json(c, 400, "{\"result\":false,\"message\":\"ID lobby non valido\",\"content\":null}");
         return;
       }
+    }
+
+    // POST /translate
+    if (mg_strcmp(hm->uri, mg_str("/translate")) == 0 &&
+        mg_strcmp(hm->method, mg_str("POST")) == 0) {
+      char text[512]={0}, source[8]={0}, target[8]={0};
+      if (!json_get_str(hm->body, "$.text", text, sizeof(text)) ||
+          !json_get_str(hm->body, "$.source", source, sizeof(source)) ||
+          !json_get_str(hm->body, "$.target", target, sizeof(target))) {
+        send_json(c, 400, "{\"result\":false,\"message\":\"text/source/target richiesti\",\"content\":null}");
+        return;
+      }
+
+      char *translated = translate_text(text, source, target);
+      char buf[1024];
+      snprintf(buf, sizeof(buf),
+        "{\"result\":true,\"message\":\"Traduzione OK\",\"content\":{\"translated\":\"%s\"}}",
+        translated);
+      send_json(c, 200, buf);
+      free(translated);
+      return;
     }
 
     // 404
