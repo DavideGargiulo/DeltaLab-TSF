@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: deltalabtsf
     ports:
-      - "5433:5433"     # se è occupata, cambia in "15432:5432"
+      - "5433:5432"     # se è occupata, cambia in "15432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -43,7 +43,7 @@ services:
     container_name: libretranslate
     restart: unless-stopped
     ports:
-      - "6000:6000"
+      - "5000:5000"
     environment:
       - LT_LOAD_ONLY=en,it,fr,es,de  # Specify languages you need
       - LT_THREADS=4
@@ -54,7 +54,7 @@ services:
       - app-network
     # Optional: Add healthcheck for LibreTranslate
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6000/languages"]
+      test: ["CMD", "curl", "-f", "http://localhost:5000/languages"]
       interval: 30s
       timeout: 10s
       retries: 3

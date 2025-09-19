@@ -327,27 +327,6 @@ Lobby* createLobby(int idCreator, bool isPrivate, LobbyRotation rotation) {
   lobby->isPrivate = isPrivate;
   lobby->status = WAITING;
 
-  // Inizializza liste
-  lobby->playersConnected = listCreate();
-  lobby->queueWaitingPlayers = listCreate();
-
-  if (!lobby->playersConnected || !lobby->queueWaitingPlayers) {
-    fprintf(stderr, "Errore nella creazione delle liste\n");
-    if (lobby->playersConnected) listDestroy(lobby->playersConnected, NULL);
-    if (lobby->queueWaitingPlayers) listDestroy(lobby->queueWaitingPlayers, NULL);
-    free(lobby);
-    return NULL;
-  }
-
-  // Inizializza mutex
-  if (pthread_mutex_init(&lobby->mutex, NULL) != 0) {
-    fprintf(stderr, "Errore nell'inizializzazione del mutex\n");
-    listDestroy(lobby->playersConnected, NULL);
-    listDestroy(lobby->queueWaitingPlayers, NULL);
-    free(lobby);
-    return NULL;
-  }
-
   return lobby;
 }
 
@@ -426,7 +405,6 @@ char* createLobbyEndpoint(const char* requestBody) {
   // Costruisci risposta JSON di successo
   char *json_response = malloc(1024);
   if (!json_response) {
-    destroyLobby(lobby);
     return strdup("{\"result\":false,\"message\":\"Errore di memoria\",\"content\":null}");
   }
   
@@ -444,22 +422,7 @@ char* createLobbyEndpoint(const char* requestBody) {
             lobby->idCreator,
             lobby->isPrivate ? "true" : "false");
   
-  // Pulisci la lobby
-  destroyLobby(lobby);
-  
   return json_response;
-}
-
-// Funzione di utilità per distruggere una lobby
-void destroyLobby(Lobby *lobby) {
-  if (!lobby) return;
-  
-  pthread_mutex_destroy(&lobby->mutex);
-  
-  if (lobby->playersConnected) listDestroy(lobby->playersConnected, NULL);
-  if (lobby->queueWaitingPlayers) listDestroy(lobby->queueWaitingPlayers, NULL);
-
-  free(lobby);
 }
 
 char* deleteLobby(const char* lobbyId, int creatorId) {
