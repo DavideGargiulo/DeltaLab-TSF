@@ -241,7 +241,7 @@ public class MainPageController extends GeneralPageController {
     private void translateUI() {
 
         try {
-            String translatedText = LanguageHelper.translate("Benvenuto", "it");
+            String translatedText = LanguageHelper.translate("Benvenuto");
             welcomeLabel.setText(translatedText + ",\n" + LoggedUser.getInstance().getUsername() + "!");
         } catch (Exception e) {
             welcomeLabel.setText("Welcome,\nuser!");

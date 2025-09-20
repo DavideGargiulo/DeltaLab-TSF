@@ -68,9 +68,11 @@ public class LanguageHelper extends GeneralPageController{
                 .orElse(null);
     }
 
-    public static String translate(String text, String source) throws IOException {
+    public static String translate(String text) throws IOException {
 
         String target = LoggedUser.getInstance().getLanguage();
+        String source = "it"; // Lingua di partenza (italiano)
+
         if (source.equals(target)) {
             return text; // Nessuna traduzione necessaria
         }
