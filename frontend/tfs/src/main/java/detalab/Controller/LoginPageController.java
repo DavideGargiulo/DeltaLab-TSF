@@ -40,12 +40,11 @@ public class LoginPageController extends GeneralPageController {
         try {
 
             // Corpo della richiesta JSON
-            String jsonInput = "{"
-                    + "\"email\":\"" + email + "\","
-                    + "\"password\":\"" + password + "\""
-                    + "}";
+            JSONObject requestBody = new JSONObject();
+            requestBody.put("email", email);
+            requestBody.put("password", password);
 
-            Response response = makeRequest("auth/login", "POST", jsonInput, 200);
+            Response response = makeRequest("auth/login", "POST", requestBody.toString(), 200);
 
             System.out.println("result: " + response.getResult());
             System.out.println("status: " + response.getStatus());

@@ -12,6 +12,7 @@ import detalab.DTO.Response;
 import detalab.DTO.User;
 import detalab.DTO.CurrentLobby;
 import detalab.DTO.Lobby;
+import detalab.DTO.LanguageHelper;
 import org.json.*;
 
 import javafx.fxml.FXML;
@@ -58,6 +59,7 @@ public class MainPageController extends GeneralPageController {
 
     @FXML
     private TableColumn<Lobby, String> lobbyStatus;
+        
 
     @FXML
     private void loadLobbies() {
@@ -141,15 +143,6 @@ public class MainPageController extends GeneralPageController {
     private void exit() throws IOException {
         LoggedUser.cleanUserSession();
         App.setRoot("login");
-    }
-
-    private void setWelcomeMessage() {
-        try {
-            welcomeLabel.setText("Benvenuto,\n" + LoggedUser.getInstance().getUsername() + "!");
-        } catch (Exception e) {
-            e.printStackTrace();
-            welcomeLabel.setText("Benvenuto,\nutente!");
-        }
     }
 
     @FXML
@@ -245,10 +238,20 @@ public class MainPageController extends GeneralPageController {
         // }
     }
 
+    private void translateUI() {
+
+        try {
+            String translatedText = LanguageHelper.translate("Benvenuto", "it");
+            welcomeLabel.setText(translatedText + ",\n" + LoggedUser.getInstance().getUsername() + "!");
+        } catch (Exception e) {
+            welcomeLabel.setText("Welcome,\nuser!");
+            e.printStackTrace();
+            showAlert(AlertType.ERROR, "Error", "An error occurred.", "Unable to translate!");
+        }
+    }
+
     @FXML
     public void initialize() {
-
-        setWelcomeMessage();
 
         //Initalize table columns
         lobbyUsers.setCellValueFactory(new PropertyValueFactory<Lobby, Integer>("lobbyUsers"));
@@ -271,5 +274,7 @@ public class MainPageController extends GeneralPageController {
         });
 
         loadLobbies();
+
+        translateUI();
     }
 }

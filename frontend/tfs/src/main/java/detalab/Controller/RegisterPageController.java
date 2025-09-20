@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Arrays;
 import java.net.HttpURLConnection;
 import detalab.DTO.Response;
-import detalab.DTO.LanguageSet;
+import detalab.DTO.LanguageHelper;
 import org.json.*;
 
 import javafx.scene.control.Alert.AlertType;
@@ -38,20 +38,18 @@ public class RegisterPageController extends GeneralPageController {
         String email = emailField.getText();
         String username = usernameField.getText();
         String password = passwordField.getText();
-        String language =  LanguageSet.getCodeFromName(langBox.getValue());
+        String language =  LanguageHelper.getCodeFromName(langBox.getValue());
 
         try {
 
             // Corpo della richiesta JSON
-            String jsonInput = "{"
-                        + "\"username\":\"" + username + "\","
-                        + "\"email\":\"" + email + "\","
-                        + "\"password\":\"" + password + "\","
-                        + "\"lingua\":\"" + language + "\""
-                        + "}";
-    
+            JSONObject requestBody = new JSONObject();
+            requestBody.put("username", username);
+            requestBody.put("email", email);
+            requestBody.put("password", password);
+            requestBody.put("lingua", language);
 
-            Response response = makeRequest("auth/register", "POST", jsonInput, 201);
+            Response response = makeRequest("auth/register", "POST", requestBody.toString(), 201);
 
             System.out.println("result: " + response.getResult());
             System.out.println("status: " + response.getStatus());
@@ -79,7 +77,7 @@ public class RegisterPageController extends GeneralPageController {
     @FXML
     private void loadLanguages() {
 
-        langBox.getItems().addAll(LanguageSet.getLanguageNames());
+        langBox.getItems().addAll(LanguageHelper.getLanguageNames());
         langBox.setValue("Italiano"); // Default value
 
     }
