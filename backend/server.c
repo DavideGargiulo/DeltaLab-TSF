@@ -1,12 +1,15 @@
 #include "mongoose.h"
 #include <stdio.h>
 #include "httpUtils.h"
-
-// Controllers
+#include "moduli/websocket/ws_lobby.h"
 #include "controllers/authController.h"
 #include "controllers/lobbyController.h"
 #include "controllers/userController.h"
 #include "controllers/translateController.h"
+
+// NEW
+
+
 
 static const char *s_listen = "http://0.0.0.0:8080";
 
@@ -22,19 +25,30 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
     return;
   }
 
-  // Delego ai controller (ordine: auth, lobby, user, translate)
+  // *** WEBSOCKET route ***
+  if (ws_lobby_handle_http(c, hm)) return;
+
+  // Controller REST
   if (auth_controller(c, hm)) return;
   if (lobby_controller(c, hm)) return;
   if (user_controller(c, hm)) return;
   if (translate_controller(c, hm)) return;
 
-  // 404
   send_json(c, 404, "{\"result\":false,\"message\":\"Route non trovata\",\"content\":null}");
 }
 
 int main(void) {
+  setbuf(stdout, NULL);
+  setbuf(stderr, NULL);
+  printf("Avvio API...\n");
+  fflush(stdout);
+
   struct mg_mgr mgr;
   mg_mgr_init(&mgr);
+
+  // init WS subsystem
+  ws_lobby_init(&mgr);
+
   struct mg_connection *lc = mg_http_listen(&mgr, s_listen, fn, NULL);
   if (!lc) {
     fprintf(stderr, "ERRORE: bind fallita su %s\n", s_listen);
@@ -42,6 +56,7 @@ int main(void) {
     return 1;
   }
   printf("API up su %s\n", s_listen);
+
   for (;;) mg_mgr_poll(&mgr, 100);
   mg_mgr_free(&mgr);
   return 0;
