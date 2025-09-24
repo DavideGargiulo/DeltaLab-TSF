@@ -10,10 +10,12 @@ import detalab.DTO.Response;
 import detalab.DTO.User;
 import detalab.DTO.CurrentLobby;
 import detalab.DTO.Lobby;
+import detalab.DTO.LanguageHelper;
 import org.json.*;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
+import javafx.scene.control.Button;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.cell.PropertyValueFactory;
@@ -34,6 +36,18 @@ public class CreateLobbyDialogController extends GeneralPageController {
 
     @FXML
     private CheckBox privateCheckBox;
+
+    @FXML
+    private Label rotationLabel;
+
+    @FXML
+    private Label privateLabel;
+
+    @FXML
+    private Button createButton;
+
+    @FXML
+    private Button cancelButton;
 
     @FXML
     public void closeDialog() {
@@ -118,10 +132,25 @@ public class CreateLobbyDialogController extends GeneralPageController {
 
     }
 
+    private void translateUI() {
+
+        // Translate Labels
+        rotationLabel.setText(LanguageHelper.translate("Senso di rotazione"));
+        privateLabel.setText(LanguageHelper.translate("Privato"));
+
+        // Translate Buttons
+        createButton.setText(LanguageHelper.translate("Crea"));
+        cancelButton.setText(LanguageHelper.translate("Annulla"));
+
+        // Translate ComboBox
+        rotationBox.getItems().clear();
+        rotationBox.getItems().addAll(LanguageHelper.translate("Orario"), LanguageHelper.translate("Antiorario"));
+        rotationBox.setValue(LanguageHelper.translate("Orario"));
+    }
+
     @FXML
     public void initialize() {
-        rotationBox.getItems().addAll("Orario", "Antiorario");
-        rotationBox.setValue("Orario");
+        translateUI();
     }
 
 }

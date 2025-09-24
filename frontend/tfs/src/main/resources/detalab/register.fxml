@@ -36,7 +36,7 @@
       </VBox>
       <VBox alignment="CENTER" prefHeight="200.0" prefWidth="100.0" spacing="30.0" GridPane.columnIndex="1">
          <children>
-            <Label text="Registrazione">
+            <Label text="Sign up">
                <font>
                   <Font name="System Bold" size="24.0" />
                </font></Label>
@@ -60,15 +60,15 @@
             </VBox>
             <VBox alignment="CENTER" spacing="10.0">
                <children>
-                  <Label text="Lingua" />
+                  <Label text="Language" />
                   <ComboBox fx:id="langBox" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefWidth="250.0" />
                </children>
             </VBox>
-            <Button mnemonicParsing="false" onAction="#register" text="Registrati" />
+            <Button mnemonicParsing="false" onAction="#register" text="Sign up" />
             <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0">
                <children>
-                  <Label text="Hai già un account?" />
-                  <Hyperlink onAction="#switchToLogin" text="Accedi!" />
+                  <Label text="Already have an account?" />
+                  <Hyperlink onAction="#switchToLogin" text="Log in!" />
                </children>
             </HBox>
          </children>

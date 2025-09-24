@@ -17,6 +17,7 @@ import org.json.*;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
+import javafx.scene.control.Button;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TableColumn;
@@ -59,7 +60,21 @@ public class MainPageController extends GeneralPageController {
 
     @FXML
     private TableColumn<Lobby, String> lobbyStatus;
-        
+
+    @FXML
+    private Button createLobbyButton;
+
+    @FXML
+    private Button randomJoinButton;
+    
+    @FXML
+    private Button joinButton;
+
+    @FXML
+    private Button exitButton;
+
+    @FXML
+    private Button updateButton;
 
     @FXML
     private void loadLobbies() {
@@ -241,8 +256,27 @@ public class MainPageController extends GeneralPageController {
     private void translateUI() {
 
         try {
-            String translatedText = LanguageHelper.translate("Benvenuto");
-            welcomeLabel.setText(translatedText + ",\n" + LoggedUser.getInstance().getUsername() + "!");
+
+            // Translate welcome message
+            welcomeLabel.setText(LanguageHelper.translate("Benvenuto") + ",\n" + LoggedUser.getInstance().getUsername() + "!");
+
+            // Translate buttons
+            createLobbyButton.setText(LanguageHelper.translate("Crea Partita"));
+            randomJoinButton.setText(LanguageHelper.translate("Partita Rapida"));
+            joinButton.setText(LanguageHelper.translate("Unisciti"));
+            exitButton.setText(LanguageHelper.translate("Esci"));
+            updateButton.setText(LanguageHelper.translate("Aggiorna"));
+
+            // Translate table columns
+            lobbyID.setText(LanguageHelper.translate("Codice"));
+            lobbyUsers.setText(LanguageHelper.translate("Utenti Connessi"));
+            lobbyRotation.setText(LanguageHelper.translate("Rotazione"));
+            lobbyCreator.setText(LanguageHelper.translate("Creatore"));
+            lobbyStatus.setText(LanguageHelper.translate("Stato"));
+
+            // Translate Field
+            codeField.setPromptText(LanguageHelper.translate("Inserisci codice..."));
+
         } catch (Exception e) {
             welcomeLabel.setText("Welcome,\nuser!");
             e.printStackTrace();
