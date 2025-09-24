@@ -3,7 +3,7 @@
 #include <stdbool.h>
 
 // Config base
-#define LOBBY_MAX_PLAYERS_DEFAULT  2
+#define LOBBY_MAX_PLAYERS_DEFAULT  8
 #define LOBBY_ID_MAXLEN           32
 
 // Inizializza il sottosistema WS (richiamala nel main)
