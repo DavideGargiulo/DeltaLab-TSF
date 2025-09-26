@@ -7,56 +7,59 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.text.Font?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
 
-<BorderPane fx:id="mainPage" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="500.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="detalab.MainPageController">
+<BorderPane fx:id="mainPage" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="500.0" prefWidth="800.0" stylesheets="@main.css" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="detalab.MainPageController">
    <top>
-      <AnchorPane prefHeight="100.0" prefWidth="600.0" BorderPane.alignment="CENTER">
+      <HBox alignment="CENTER_LEFT" prefWidth="200.0" spacing="20.0" styleClass="header" BorderPane.alignment="CENTER">
          <children>
-            <Label fx:id="welcomeLabel" layoutX="76.0" layoutY="57.0" text="WELCOME LABEL WITH NICKNAME" AnchorPane.leftAnchor="20.0" AnchorPane.topAnchor="20.0">
-               <font>
-                  <Font name="System Bold" size="24.0" />
-               </font></Label>
-            <ImageView fitHeight="150.0" fitWidth="200.0" layoutX="357.0" layoutY="29.0" pickOnBounds="true" preserveRatio="true" AnchorPane.rightAnchor="20.0" AnchorPane.topAnchor="20.0">
+            <Label fx:id="welcomeLabel" styleClass="title" text="WELCOME LABEL WITH NICKNAME" />
+            <Region prefWidth="200.0" HBox.hgrow="ALWAYS" />
+            <ImageView fitHeight="50.0" fitWidth="200.0" pickOnBounds="true" preserveRatio="true">
                <image>
                   <Image url="@../imgs/logo_no_bg.png" />
                </image>
             </ImageView>
          </children>
-      </AnchorPane>
+      </HBox>
    </top>
    <center>
-      <AnchorPane prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER">
+      <VBox alignment="TOP_CENTER" prefHeight="200.0" prefWidth="100.0" spacing="20.0" styleClass="main-center" BorderPane.alignment="CENTER">
          <children>
-            <TableView fx:id="lobbyList" prefHeight="200.0" prefWidth="200.0" AnchorPane.bottomAnchor="50.0" AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="20.0" AnchorPane.topAnchor="100.0">
+            <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0" spacing="10.0">
+               <children>
+                  <Button fx:id="createLobbyButton" mnemonicParsing="false" onAction="#showNewLobbyDialog" styleClass="action-button" text="Crea Partita" />
+                  <Button fx:id="randomJoinButton" mnemonicParsing="false" onAction="#joinRandomLobby" styleClass="action-button" text="Partita Rapida" />
+                  <Region prefHeight="200.0" prefWidth="200.0" HBox.hgrow="ALWAYS" />
+                  <Button fx:id="joinButton" mnemonicParsing="false" onAction="#joinLobbyWithID" styleClass="action-button" text="Unisciti" />
+                  <TextField fx:id="codeField" maxHeight="-Infinity" minHeight="-Infinity" onAction="#joinLobbyWithID" prefHeight="33.0" promptText="Codice Stanza" styleClass="text-field" />
+               </children>
+            </HBox>
+            <TableView fx:id="lobbyList" styleClass="lobbyList" VBox.vgrow="ALWAYS">
               <columns>
-                <TableColumn fx:id="lobbyID" prefWidth="75.0" text="Codice" />
-                <TableColumn fx:id="lobbyUsers" prefWidth="75.0" text="Utenti Connessi" />
-                  <TableColumn fx:id="lobbyRotation" prefWidth="75.0" text="Rotazione" />
-                  <TableColumn fx:id="lobbyCreator" prefWidth="75.0" text="Creatore" />
-                  <TableColumn fx:id="lobbyStatus" prefWidth="75.0" text="Stato" />
+                <TableColumn fx:id="lobbyID" prefWidth="75.0" style="background: transparent;" text="Codice" />
+                <TableColumn fx:id="lobbyUsers" prefWidth="75.0" style="background: transparent;" text="Utenti Connessi" />
+                  <TableColumn fx:id="lobbyRotation" prefWidth="75.0" style="background: transparent;" text="Rotazione" />
+                  <TableColumn fx:id="lobbyCreator" prefWidth="75.0" style="background: transparent;" text="Creatore" />
+                  <TableColumn fx:id="lobbyStatus" prefWidth="75.0" style="background: transparent;" text="Stato" />
               </columns>
                <columnResizePolicy>
                   <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
                </columnResizePolicy>
             </TableView>
-            <Button fx:id="exitButton" layoutX="50.0" layoutY="361.0" mnemonicParsing="false" onAction="#exit" text="Esci" AnchorPane.bottomAnchor="15.0" AnchorPane.leftAnchor="20.0" />
-            <Button fx:id="updateButton" layoutX="60.0" layoutY="371.0" mnemonicParsing="false" onAction="#loadLobbies" text="Aggiorna" AnchorPane.bottomAnchor="15.0" AnchorPane.rightAnchor="20.0" />
-            <HBox alignment="TOP_CENTER" layoutX="47.0" layoutY="-50.0" spacing="10.0" AnchorPane.leftAnchor="20.0" AnchorPane.topAnchor="60.0">
-               <children>
-                  <Button fx:id="createLobbyButton" mnemonicParsing="false" onAction="#showNewLobbyDialog" text="Crea Partita" />
-                  <Button fx:id="randomJoinButton" mnemonicParsing="false" onAction="#joinRandomLobby" text="Partita Rapida" />
-               </children>
-            </HBox>
-            <HBox layoutX="335.0" spacing="10.0" AnchorPane.rightAnchor="20.0" AnchorPane.topAnchor="60.0">
-               <children>
-                  <Button fx:id="joinButton" mnemonicParsing="false" onAction="#joinLobbyWithID" text="Unisciti" />
-                  <TextField fx:id="codeField" promptText="Codice Stanza" />
-               </children>
-            </HBox>
-         </children></AnchorPane>
+         </children>
+      </VBox>
    </center>
+   <bottom>
+      <HBox alignment="CENTER_RIGHT" prefWidth="200.0" spacing="10.0" styleClass="footer" BorderPane.alignment="CENTER">
+         <children>
+            <Button fx:id="exitButton" mnemonicParsing="false" onAction="#exit" styleClass="footer-button" text="Esci" />
+            <Region prefWidth="200.0" HBox.hgrow="ALWAYS" />
+            <Button fx:id="updateButton" mnemonicParsing="false" onAction="#loadLobbies" styleClass="footer-button" text="Aggiorna" />
+         </children>
+      </HBox>
+   </bottom>
 </BorderPane>

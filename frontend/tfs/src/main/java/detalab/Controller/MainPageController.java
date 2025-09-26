@@ -229,28 +229,6 @@ public class MainPageController extends GeneralPageController {
         
         //TODO: Rimuovere il commento quando il backend supporterà l'entrata in lobby
 
-        // try {
-
-        //     Response response = makeRequest("lobby/" + lobbyID + "/join", "POST", 200);
-
-        //     String content = response.getContent();
-
-        //     System.out.println("result: " + response.getResult());
-        //     System.out.println("status: " + response.getStatus());
-        //     System.out.println("message: " + response.getMessage());
-        //     System.out.println("content: " + response.getContent() + "\n");
-
-        //     if (response.getStatus() == 200) {
-        //         App.setRoot("game");
-        //     } else {
-        //         showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", response.getMessage());
-        //     }
-
-            
-        // } catch (Exception e) {
-        //     e.printStackTrace();
-        //     showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", "Errore imprevisto!");
-        // }
     }
 
     private void translateUI() {
