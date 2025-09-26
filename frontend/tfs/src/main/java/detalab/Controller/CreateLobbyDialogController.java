@@ -134,18 +134,47 @@ public class CreateLobbyDialogController extends GeneralPageController {
 
     private void translateUI() {
 
-        // Translate Labels
-        rotationLabel.setText(LanguageHelper.translate("Senso di rotazione"));
-        privateLabel.setText(LanguageHelper.translate("Privato"));
+        try {
 
-        // Translate Buttons
-        createButton.setText(LanguageHelper.translate("Crea"));
-        cancelButton.setText(LanguageHelper.translate("Annulla"));
+            // Translate Labels
+            rotationLabel.setText(LanguageHelper.translate("Rotation"));
+            privateLabel.setText(LanguageHelper.translate("Private"));
 
-        // Translate ComboBox
-        rotationBox.getItems().clear();
-        rotationBox.getItems().addAll(LanguageHelper.translate("Orario"), LanguageHelper.translate("Antiorario"));
-        rotationBox.setValue(LanguageHelper.translate("Orario"));
+            // Translate Buttons
+            createButton.setText(LanguageHelper.translate("Create Lobby, Franwik!").split("\\s+")[0]);
+            cancelButton.setText(LanguageHelper.translate("Cancel"));
+
+            // Translate ComboBox
+            rotationBox.getItems().clear();
+            rotationBox.getItems().addAll(capitalizeLastWord(LanguageHelper.translate("Spin Clockwise")), capitalizeLastWord(LanguageHelper.translate("Spin counterclockwise")));
+            rotationBox.setValue(capitalizeLastWord(LanguageHelper.translate("Spin Clockwise")));
+
+        } catch (Exception e) {
+            
+            // Default transations in case of error
+
+            // Labels
+            rotationLabel.setText("Rotation");
+            privateLabel.setText("Private");
+
+            // Buttons
+            createButton.setText("Create");
+            cancelButton.setText("Cancel");
+
+            // ComboBox
+            rotationBox.getItems().clear();
+            rotationBox.getItems().addAll("Clockwise", "Counterclockwise");
+            rotationBox.setValue("Clockwise");
+
+            e.printStackTrace();
+            showAlert(AlertType.ERROR, "Error", "An error occurred.", "Unable to translate!");
+        }
+    }
+
+    private String capitalizeLastWord(String input) {
+        String lastWord = input.replaceAll(".*\\s", "");
+        if (lastWord.isEmpty()) return lastWord;
+        return lastWord.substring(0,1).toUpperCase() + lastWord.substring(1);
     }
 
     @FXML

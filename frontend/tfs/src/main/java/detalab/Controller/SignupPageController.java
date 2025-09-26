@@ -18,7 +18,7 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 
-public class RegisterPageController extends GeneralPageController {
+public class SignupPageController extends GeneralPageController {
 
     @FXML
     TextField emailField;
@@ -33,7 +33,7 @@ public class RegisterPageController extends GeneralPageController {
     private ComboBox<String> langBox;
 
     @FXML
-    private void register() throws IOException {
+    private void signup() throws IOException {
 
         String email = emailField.getText();
         String username = usernameField.getText();

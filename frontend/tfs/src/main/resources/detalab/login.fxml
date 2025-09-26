@@ -8,60 +8,62 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.ColumnConstraints?>
-<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<GridPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="500.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="detalab.LoginPageController">
-  <columnConstraints>
-    <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" percentWidth="33.0" prefWidth="100.0" />
-    <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
-  </columnConstraints>
-  <rowConstraints>
-    <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-  </rowConstraints>
-   <children>
-      <VBox alignment="CENTER" prefHeight="200.0" prefWidth="100.0">
+<BorderPane fx:id="root" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="500.0" prefWidth="800.0" stylesheets="@login.css" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="detalab.LoginPageController">
+   <left>
+      <VBox alignment="CENTER" prefHeight="200.0" prefWidth="100.0" styleClass="left-pane" BorderPane.alignment="CENTER">
          <children>
             <ImageView fitHeight="150.0" fitWidth="200.0" pickOnBounds="true" preserveRatio="true">
                <image>
                   <Image url="@../imgs/logo_no_bg.png" />
                </image>
             </ImageView>
-         </children>
-      </VBox>
-      <VBox alignment="CENTER" prefHeight="200.0" prefWidth="100.0" spacing="50.0" GridPane.columnIndex="1">
+         </children></VBox>
+   </left>
+   <center>
+      <VBox alignment="CENTER" prefHeight="200.0" prefWidth="100.0" spacing="20.0" styleClass="right-pane" BorderPane.alignment="CENTER">
          <children>
-            <Label text="Log in">
+            <Label styleClass="title" text="Log in" VBox.vgrow="ALWAYS">
                <font>
-                  <Font name="System Bold" size="24.0" />
-               </font></Label>
-            <VBox alignment="CENTER" spacing="10.0">
+                  <Font size="28.0" />
+               </font>
+            </Label>
+            <VBox alignment="CENTER" prefHeight="200.0" prefWidth="100.0" spacing="10.0">
                <children>
-                  <Label text="Email" />
-                  <TextField fx:id="emailField" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefWidth="250.0" text="mario@mail.com" />
-               </children>
-            </VBox>
-            <VBox alignment="CENTER" spacing="10.0">
+                  <Label text="Email">
+                     <font>
+                        <Font size="14.0" />
+                     </font></Label>
+                  <TextField fx:id="emailField" maxHeight="-Infinity" minHeight="-Infinity" onAction="#Login" prefHeight="43.0" promptText="you@email.com" text="mario@mail.com" />
+               </children></VBox>
+            <VBox alignment="CENTER" prefHeight="200.0" prefWidth="100.0" spacing="10.0">
                <children>
-                  <Label text="Password" />
-                  <PasswordField fx:id="passwordField" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefWidth="250.0" text="password123" />
-               </children>
-            </VBox>
-            <Button mnemonicParsing="false" onAction="#Login" text="Log in" />
-            <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0">
+                  <Label text="Password">
+                     <font>
+                        <Font size="14.0" />
+                     </font></Label>
+                  <PasswordField fx:id="passwordField" maxHeight="-Infinity" minHeight="-Infinity" onAction="#Login" prefHeight="43.0" promptText="***********" text="password123" />
+               </children></VBox>
+            <Button maxHeight="-Infinity" minHeight="-Infinity" mnemonicParsing="false" onAction="#Login" styleClass="login-button" text="Log in" />
+            <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0" spacing="5.0">
                <children>
-                  <Label text="Don't have an account?" />
-                  <Hyperlink onAction="#switchToRegister" text="Sign up!" />
-               </children>
-            </HBox>
+                  <Label text="Don't have an account?">
+                     <font>
+                        <Font size="14.0" />
+                     </font></Label>
+                  <Hyperlink onAction="#switchToSignup" text="Sign up!">
+                     <font>
+                        <Font size="14.0" />
+                     </font></Hyperlink>
+               </children></HBox>
          </children>
-         <GridPane.margin>
-            <Insets />
-         </GridPane.margin>
+         <BorderPane.margin>
+            <Insets bottom="25.0" left="25.0" right="25.0" top="25.0" />
+         </BorderPane.margin>
       </VBox>
-   </children>
-</GridPane>
+   </center>
+</BorderPane>

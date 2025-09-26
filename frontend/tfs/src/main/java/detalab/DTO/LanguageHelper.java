@@ -71,7 +71,7 @@ public class LanguageHelper extends GeneralPageController{
     public static String translate(String text) throws IOException {
 
         String target = LoggedUser.getInstance().getLanguage();
-        String source = "it"; // Lingua di partenza (italiano)
+        String source = "en"; // Lingua di partenza (inglese)
 
         if (source.equals(target)) {
             return text; // Nessuna traduzione necessaria
@@ -98,7 +98,6 @@ public class LanguageHelper extends GeneralPageController{
         
         // Leggi lo status code
         int statusCode = conn.getResponseCode();
-        System.out.println("Status code: " + statusCode);
 
         BufferedReader br = new BufferedReader(new InputStreamReader(
                     (statusCode == 200) ? conn.getInputStream() : conn.getErrorStream(),
@@ -116,11 +115,7 @@ public class LanguageHelper extends GeneralPageController{
         String responseBody = response.toString();
         JSONObject json = new JSONObject(responseBody);
 
-        String translatedText = json.getString("translatedText");
-
-        System.out.println("Translated text: " + translatedText);
-
-        return translatedText;
+        return json.getString("translatedText");
     }
 
 }

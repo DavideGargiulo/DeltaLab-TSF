@@ -1,0 +1,83 @@
+/* Sfondo gradiente generale */
+#root {
+    -fx-background-color: linear-gradient(to right, #0a1f44, #112d66);
+}
+
+/* Sezione sinistra con logo */
+.left-pane {
+    -fx-padding: 40;
+    -fx-background-color: transparent;
+}
+
+/* Sezione destra (card) */
+.right-pane {
+    -fx-padding: 40;
+    -fx-background-color: rgba(255,255,255,0.05);
+    -fx-background-radius: 20;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 20, 0, 0, 5);
+}
+
+/* Titolo principale */
+.title {
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+/* Label */
+.label {
+    -fx-text-fill: #cfd8dc;
+}
+
+/* Campi di testo e password */
+.text-field, .password-field, .combo-box {
+    -fx-background-radius: 10;
+    -fx-background-color: rgba(255,255,255,0.15);
+    -fx-text-fill: white;
+    -fx-prompt-text-fill: #9e9e9e;
+    -fx-padding: 8 12;
+    -fx-border-color: transparent;
+}
+
+/* ComboBox: menu a tendina */
+.combo-box .arrow {
+    -fx-background-color: white;
+}
+.combo-box .list-cell {
+    -fx-text-fill: black;
+}
+
+/* Bottone signup */
+.signup-button {
+    -fx-background-color: #1e88e5;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 10;
+    -fx-padding: 10 20;
+}
+.signup-button:hover {
+    -fx-background-color: #42a5f5;
+}
+
+/* Testo visibile nella parte chiusa del ComboBox */
+.combo-box {
+    -fx-text-fill: white;               /* colore testo principale */
+}
+
+/* Area di visualizzazione (dove appare il valore selezionato) */
+.combo-box .list-cell {
+    -fx-text-fill: white;               /* colore del testo quando il box è chiuso */
+    -fx-background-color: transparent;  /* sfondo trasparente per uniformità */
+}
+
+/* Celle del menu a tendina */
+.combo-box-popup .list-view .list-cell {
+    -fx-text-fill: white;               /* colore testo nel menu a tendina */
+    -fx-background-color: #1e2a45;      /* puoi cambiare con un blu scuro o trasparente */
+}
+
+/* Stato hover/focus per le celle del menu a tendina */
+.combo-box-popup .list-view .list-cell:hover,
+.combo-box-popup .list-view .list-cell:selected {
+    -fx-background-color: #42a5f5;
+    -fx-text-fill: white;
+}

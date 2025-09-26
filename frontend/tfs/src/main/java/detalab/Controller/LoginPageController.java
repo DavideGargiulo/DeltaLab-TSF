@@ -21,8 +21,8 @@ import javafx.scene.control.Alert;
 public class LoginPageController extends GeneralPageController {
 
     @FXML
-    private void switchToRegister() throws IOException {
-        App.setRoot("register");
+    private void switchToSignup() throws IOException {
+        App.setRoot("signup");
     }
 
     @FXML

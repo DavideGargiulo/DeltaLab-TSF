@@ -9,6 +9,7 @@
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
 <?import javafx.scene.text.Font?>
 
 <BorderPane fx:id="mainPage" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="500.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="detalab.MainPageController">
@@ -42,12 +43,20 @@
                   <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
                </columnResizePolicy>
             </TableView>
-            <Button fx:id="createLobbyButton" layoutX="50.0" layoutY="58.0" mnemonicParsing="false" onAction="#showNewLobbyDialog" text="Crea Partita" AnchorPane.leftAnchor="20.0" AnchorPane.topAnchor="60.0" />
-            <Button fx:id="randomJoinButton" layoutX="374.0" layoutY="60.0" mnemonicParsing="false" onAction="#joinRandomLobby" text="Partita Rapida" AnchorPane.leftAnchor="110.0" AnchorPane.topAnchor="60.0" />
-            <Button fx:id="joinButton" layoutX="384.0" layoutY="70.0" mnemonicParsing="false" onAction="#joinLobbyWithID" text="Unisciti" AnchorPane.rightAnchor="180.0" AnchorPane.topAnchor="60.0" />
-            <TextField fx:id="codeField" layoutX="476.0" layoutY="60.0" promptText="Codice Stanza" AnchorPane.rightAnchor="20.0" AnchorPane.topAnchor="60.0" />
             <Button fx:id="exitButton" layoutX="50.0" layoutY="361.0" mnemonicParsing="false" onAction="#exit" text="Esci" AnchorPane.bottomAnchor="15.0" AnchorPane.leftAnchor="20.0" />
             <Button fx:id="updateButton" layoutX="60.0" layoutY="371.0" mnemonicParsing="false" onAction="#loadLobbies" text="Aggiorna" AnchorPane.bottomAnchor="15.0" AnchorPane.rightAnchor="20.0" />
+            <HBox alignment="TOP_CENTER" layoutX="47.0" layoutY="-50.0" spacing="10.0" AnchorPane.leftAnchor="20.0" AnchorPane.topAnchor="60.0">
+               <children>
+                  <Button fx:id="createLobbyButton" mnemonicParsing="false" onAction="#showNewLobbyDialog" text="Crea Partita" />
+                  <Button fx:id="randomJoinButton" mnemonicParsing="false" onAction="#joinRandomLobby" text="Partita Rapida" />
+               </children>
+            </HBox>
+            <HBox layoutX="335.0" spacing="10.0" AnchorPane.rightAnchor="20.0" AnchorPane.topAnchor="60.0">
+               <children>
+                  <Button fx:id="joinButton" mnemonicParsing="false" onAction="#joinLobbyWithID" text="Unisciti" />
+                  <TextField fx:id="codeField" promptText="Codice Stanza" />
+               </children>
+            </HBox>
          </children></AnchorPane>
    </center>
 </BorderPane>

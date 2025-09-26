@@ -261,24 +261,43 @@ public class MainPageController extends GeneralPageController {
             welcomeLabel.setText(LanguageHelper.translate("Benvenuto") + ",\n" + LoggedUser.getInstance().getUsername() + "!");
 
             // Translate buttons
-            createLobbyButton.setText(LanguageHelper.translate("Crea Partita"));
-            randomJoinButton.setText(LanguageHelper.translate("Partita Rapida"));
-            joinButton.setText(LanguageHelper.translate("Unisciti"));
-            exitButton.setText(LanguageHelper.translate("Esci"));
-            updateButton.setText(LanguageHelper.translate("Aggiorna"));
+            createLobbyButton.setText(LanguageHelper.translate("Create Lobby, Franwik!").split(",")[0].trim());
+            randomJoinButton.setText(LanguageHelper.translate("Quick Match"));
+            joinButton.setText(LanguageHelper.translate("Join Lobby"));
+            exitButton.setText(LanguageHelper.translate("Logout"));
+            updateButton.setText(LanguageHelper.translate("Update the table, Franwik!").split("\\s+")[0]);
 
             // Translate table columns
-            lobbyID.setText(LanguageHelper.translate("Codice"));
-            lobbyUsers.setText(LanguageHelper.translate("Utenti Connessi"));
-            lobbyRotation.setText(LanguageHelper.translate("Rotazione"));
-            lobbyCreator.setText(LanguageHelper.translate("Creatore"));
-            lobbyStatus.setText(LanguageHelper.translate("Stato"));
+            lobbyID.setText(LanguageHelper.translate("Code"));
+            lobbyUsers.setText(LanguageHelper.translate("Connected Users"));
+            lobbyRotation.setText(LanguageHelper.translate("Rotation"));
+            lobbyCreator.setText(LanguageHelper.translate("Creator"));
+            lobbyStatus.setText(LanguageHelper.translate("Status"));
 
             // Translate Field
-            codeField.setPromptText(LanguageHelper.translate("Inserisci codice..."));
+            codeField.setPromptText(LanguageHelper.translate("Lobby Code"));
 
         } catch (Exception e) {
+
+            // Default translation in case of error
+
+            // Welcome message
             welcomeLabel.setText("Welcome,\nuser!");
+
+            // Buttons
+            createLobbyButton.setText("Create Lobby");
+            randomJoinButton.setText("Quick Match");
+            joinButton.setText("Join");
+            exitButton.setText("Log out");
+            updateButton.setText("Update");
+
+            // Table columns
+            lobbyID.setText("Code");
+            lobbyUsers.setText("Connected Users");
+            lobbyRotation.setText("Rotation");
+            lobbyCreator.setText("Creator");
+            lobbyStatus.setText("Status");
+
             e.printStackTrace();
             showAlert(AlertType.ERROR, "Error", "An error occurred.", "Unable to translate!");
         }
