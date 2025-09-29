@@ -186,8 +186,15 @@ static void handle_action_join(struct mg_connection *c, struct mg_ws_message *wm
     cl->c = c;
     snprintf(cl->player_id, sizeof(cl->player_id), "%s", player_id);
     snprintf(cl->username, sizeof(cl->username), "%s", username);
-    cl->next = r->clients;
-    r->clients = cl;
+    cl->next = NULL;
+
+    if (!r->clients) {
+      r->clients = cl;
+    } else {
+      struct ws_client *tail = r->clients;
+      while (tail->next) tail = tail->next;
+      tail->next = cl;
+    }
     r->players_count++;
   } else {
     snprintf(exists->player_id, sizeof(exists->player_id), "%s", player_id);
@@ -210,6 +217,32 @@ static void handle_action_join(struct mg_connection *c, struct mg_ws_message *wm
     room_broadcast(r, "{\"type\":\"lobby_full\"}");
   }
 }
+
+// ======= Turni =======
+static void get_next_player_id(struct lobby_room *r, const char *current_id,
+                               char *out, size_t outlen) {
+  if (!r || !r->clients || !out || outlen == 0) { if (out) out[0] = 0; return; }
+
+  struct ws_client *cur = NULL, *prev = NULL;
+  for (struct ws_client *it = r->clients; it; it = it->next) {
+    if (strncmp(it->player_id, current_id ? current_id : "", sizeof(it->player_id)) == 0) {
+      cur = it;
+      break;
+    }
+    prev = it;
+  }
+
+  // Se non trovo il corrente, prendo semplicemente la testa
+  struct ws_client *next = NULL;
+  if (!cur) {
+    next = r->clients;
+  } else {
+    next = cur->next ? cur->next : r->clients;  // ciclo
+  }
+
+  snprintf(out, outlen, "%s", next ? next->player_id : "");
+}
+
 
 static void handle_action_leave(struct mg_connection *c, struct conn_state *st) {
   if (!*st->lobby_id) return;
@@ -237,12 +270,21 @@ static void handle_action_chat(struct mg_connection *c, struct mg_ws_message *wm
   char text[512] = {0};
   json_get_str(wm, "text", text, sizeof(text));
 
-  char msg[800];
-  snprintf(msg, sizeof(msg),
-           "{\"type\":\"chat\",\"playerId\":\"%s\",\"username\":\"%s\",\"text\":\"%s\"}",
-           st->player_id, st->username, text);
+  // Calcola il prossimo giocatore
+  char next_id[32] = {0};
+  get_next_player_id(r, st->player_id, next_id, sizeof(next_id));
+
+  char msg[900];
+  // Include nextPlayerId nel broadcast
+  int n = snprintf(msg, sizeof(msg),
+           "{\"type\":\"chat\",\"playerId\":\"%s\",\"username\":\"%s\",\"text\":\"%s\",\"nextPlayerId\":\"%s\"}",
+           st->player_id, st->username, text, next_id);
+  if (n < 0) return;
+  if ((size_t)n >= sizeof(msg)) msg[sizeof(msg)-1] = '\0';
+
   room_broadcast(r, msg);
 }
+
 
 static void handle_action_state(struct mg_connection *c, struct conn_state *st) {
   if (!*st->lobby_id) return;
