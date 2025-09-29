@@ -102,3 +102,37 @@
     -fx-padding: 10 20;
     -fx-background-color: rgba(255,255,255,0.05);
 }
+
+/* === TableView righe alternate e testo leggibile === */
+
+/* Colore di sfondo generale della tabella */
+.table-view {
+    -fx-background-color: transparent;
+}
+
+/* Riga dispari */
+.table-view .table-row-cell:odd {
+    -fx-background-color: rgba(255,255,255,0.05);   /* leggermente più chiara */
+}
+
+/* Riga pari */
+.table-view .table-row-cell:even {
+    -fx-background-color: rgba(255,255,255,0.10);   /* leggermente più scura */
+}
+
+/* Testo delle celle */
+.table-view .table-cell {
+    -fx-text-fill: white;                           /* testo bianco */
+    -fx-font-size: 14px;
+}
+
+/* Hover della riga: evidenziata con blu */
+.table-view .table-row-cell:hover {
+    -fx-background-color: rgba(66,165,245,0.30);
+}
+
+/* Riga selezionata: blu più deciso */
+.table-view .table-row-cell:selected {
+    -fx-background-color: rgba(66,165,245,0.50);
+    -fx-text-fill: white;
+}

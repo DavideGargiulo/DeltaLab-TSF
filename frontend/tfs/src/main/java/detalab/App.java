@@ -19,7 +19,8 @@ public class App extends Application {
     public void start(Stage stage) throws IOException {
         scene = new Scene(loadFXML("login"), 800, 500);
         stage.setScene(scene);
-        stage.setTitle("Telefono Senza Filo - DeltaLab");
+        stage.setTitle("TSF - DeltaLab");
+        stage.setResizable(false);
         stage.show();
         stage.setMinWidth(stage.getWidth());
         stage.setMinHeight(stage.getHeight());

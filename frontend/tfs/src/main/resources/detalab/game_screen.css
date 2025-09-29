@@ -1,0 +1,87 @@
+/* Sfondo identico alla mainPage */
+#gamePage {
+    -fx-background-color: linear-gradient(to right, #0a1f44, #112d66);
+    -fx-font-family: "Segoe UI", sans-serif;
+}
+
+/* Header e footer simili a main */
+.header {
+    -fx-padding: 20;
+    -fx-background-color: rgba(255,255,255,0.05);
+}
+.footer {
+    -fx-padding: 15 20;
+    -fx-background-color: rgba(255,255,255,0.05);
+}
+
+.title {
+    -fx-text-fill: white;
+    -fx-font-size: 23px;
+    -fx-font-weight: bold;
+}
+.count-label {
+    -fx-text-fill: #42a5f5;
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+}
+
+/* Right panel */
+.right-pane {
+    -fx-padding: 20;
+}
+
+/* Lista waiting */
+.waiting-list {
+    -fx-background-color: rgba(255,255,255,0.05);
+    -fx-background-radius: 10;
+    -fx-border-color: transparent;
+}
+.waiting-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+}
+
+/* TextField input */
+.text-field {
+    -fx-background-radius: 10;
+    -fx-background-color: rgba(255,255,255,0.15);
+    -fx-text-fill: white;
+    -fx-prompt-text-fill: #9e9e9e;
+    -fx-border-color: transparent;
+    -fx-padding: 6 10;
+}
+
+/* Buttons */
+.action-button {
+    -fx-background-color: #1e88e5;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 10;
+    -fx-padding: 8 16;
+}
+.action-button:hover {
+    -fx-background-color: #42a5f5;
+}
+.footer-button {
+    -fx-background-color: #37474f;
+    -fx-text-fill: white;
+    -fx-background-radius: 8;
+    -fx-padding: 6 14;
+}
+.footer-button:hover {
+    -fx-background-color: #546e7a;
+}
+
+/* Giocatori */
+.player-box {
+    -fx-spacing: 5;
+}
+.player-name {
+    -fx-text-fill: white;
+    -fx-font-size: 14px
+}
+
+.phrase-label {
+    -fx-font-size: 20px;
+    -fx-text-fill: white;
+}

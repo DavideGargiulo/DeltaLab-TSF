@@ -136,18 +136,25 @@ public class CreateLobbyDialogController extends GeneralPageController {
 
         try {
 
+            String translatedText = LanguageHelper.translate("Rotation. Private. Create Lobby, Franwik!. Cancel. Spin clockwise. Spin counterclockwise.");
+            List<String> translatedStrings = new ArrayList<>();
+
+            for (String str : translatedText.split("\\.")) {
+                translatedStrings.add(str.trim());
+            }
+
             // Translate Labels
-            rotationLabel.setText(LanguageHelper.translate("Rotation"));
-            privateLabel.setText(LanguageHelper.translate("Private"));
+            rotationLabel.setText(translatedStrings.get(0));
+            privateLabel.setText(translatedStrings.get(1));
 
             // Translate Buttons
-            createButton.setText(LanguageHelper.translate("Create Lobby, Franwik!").split("\\s+")[0]);
-            cancelButton.setText(LanguageHelper.translate("Cancel"));
+            createButton.setText((translatedStrings.get(2).split("\\s+")[0]));
+            cancelButton.setText(translatedStrings.get(3));
 
             // Translate ComboBox
             rotationBox.getItems().clear();
-            rotationBox.getItems().addAll(capitalizeLastWord(LanguageHelper.translate("Spin Clockwise")), capitalizeLastWord(LanguageHelper.translate("Spin counterclockwise")));
-            rotationBox.setValue(capitalizeLastWord(LanguageHelper.translate("Spin Clockwise")));
+            rotationBox.getItems().addAll(capitalizeLastWord(translatedStrings.get(4)), capitalizeLastWord(translatedStrings.get(5)));
+            rotationBox.setValue(capitalizeLastWord(translatedStrings.get(4)));
 
         } catch (Exception e) {
             

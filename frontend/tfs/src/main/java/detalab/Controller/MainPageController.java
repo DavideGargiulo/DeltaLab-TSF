@@ -76,6 +76,8 @@ public class MainPageController extends GeneralPageController {
     @FXML
     private Button updateButton;
 
+    List<String> translatedStrings = new ArrayList<>();
+
     @FXML
     private void loadLobbies() {
 
@@ -131,11 +133,16 @@ public class MainPageController extends GeneralPageController {
     @FXML
     private void showNewLobbyDialog() {
         try {
-            FXMLLoader fxmlLoader = new FXMLLoader(App.class.getResource("NewLobbyDialog.fxml"));
+            FXMLLoader fxmlLoader = new FXMLLoader(App.class.getResource("create_lobby.fxml"));
             Parent dialogRoot = fxmlLoader.load();
-            Scene dialogScene = new Scene(dialogRoot);
+            Scene dialogScene = new Scene(dialogRoot, 365, 180);
             Stage dialogStage = new Stage();
-            dialogStage.setTitle("Crea nuova Lobby");
+            if (!translatedStrings.isEmpty()) {
+                // Translate dialog title
+                dialogStage.setTitle(translatedStrings.get(1).split(",")[0].trim());
+            } else {
+                dialogStage.setTitle("Create Lobby");
+            }
             dialogStage.setScene(dialogScene);
             Stage ownerStage = (Stage) mainPage.getScene().getWindow();
             dialogStage.initOwner(ownerStage);
@@ -145,7 +152,10 @@ public class MainPageController extends GeneralPageController {
 
             // Things to do after the dialog is closed
             loadLobbies();
-            enterLobby(CurrentLobby.getInstance());
+
+            if (CurrentLobby.getInstance() != null) {
+                enterLobby(CurrentLobby.getInstance());
+            }
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -221,7 +231,7 @@ public class MainPageController extends GeneralPageController {
 
         try {
             CurrentLobby.getInstance(lobby, new ArrayList<User>(), new ArrayList<User>());
-            App.setRoot("game");
+            App.setRoot("game_screen");
         } catch (Exception e) {
             e.printStackTrace();
             showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", "Errore imprevisto!");
@@ -235,25 +245,31 @@ public class MainPageController extends GeneralPageController {
 
         try {
 
+            String translatedText = LanguageHelper.translate("Welcome. Create Lobby, Franwik!. Quick Match. Join Lobby. Logout. Update the table, Franwik!. Code. Connected Users. Rotation. Creator. Status. Lobby Code.");
+
+            for (String str : translatedText.split("\\.")) {
+                translatedStrings.add(str.trim());
+            }
+
             // Translate welcome message
-            welcomeLabel.setText(LanguageHelper.translate("Benvenuto") + ",\n" + LoggedUser.getInstance().getUsername() + "!");
+            welcomeLabel.setText(translatedStrings.get(0) + ",\n" + LoggedUser.getInstance().getUsername() + "!");
 
             // Translate buttons
-            createLobbyButton.setText(LanguageHelper.translate("Create Lobby, Franwik!").split(",")[0].trim());
-            randomJoinButton.setText(LanguageHelper.translate("Quick Match"));
-            joinButton.setText(LanguageHelper.translate("Join Lobby"));
-            exitButton.setText(LanguageHelper.translate("Logout"));
-            updateButton.setText(LanguageHelper.translate("Update the table, Franwik!").split("\\s+")[0]);
+            createLobbyButton.setText(translatedStrings.get(1).split(",")[0].trim());
+            randomJoinButton.setText(translatedStrings.get(2));
+            joinButton.setText(translatedStrings.get(3));
+            exitButton.setText(translatedStrings.get(4));
+            updateButton.setText(translatedStrings.get(5).split("\\s+")[0]);
 
             // Translate table columns
-            lobbyID.setText(LanguageHelper.translate("Code"));
-            lobbyUsers.setText(LanguageHelper.translate("Connected Users"));
-            lobbyRotation.setText(LanguageHelper.translate("Rotation"));
-            lobbyCreator.setText(LanguageHelper.translate("Creator"));
-            lobbyStatus.setText(LanguageHelper.translate("Status"));
+            lobbyID.setText(translatedStrings.get(6));
+            lobbyUsers.setText(translatedStrings.get(7));
+            lobbyRotation.setText(translatedStrings.get(8));
+            lobbyCreator.setText(translatedStrings.get(9));
+            lobbyStatus.setText(translatedStrings.get(10));
 
             // Translate Field
-            codeField.setPromptText(LanguageHelper.translate("Lobby Code"));
+            codeField.setPromptText(translatedStrings.get(11));
 
         } catch (Exception e) {
 

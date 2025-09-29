@@ -19,11 +19,13 @@ public class GamePageController {
     }
 
     private void setCodeLabel() {
-        codeLabel.setText("Codice:\n" + CurrentLobby.getInstance().getLobbyID());
+        codeLabel.setText("Code: " + CurrentLobby.getInstance().getLobbyID());
     }
 
     @FXML
     public void initialize() {
+
+        System.out.println(CurrentLobby.getInstance().getLobbyID());
 
         setCodeLabel();
 
