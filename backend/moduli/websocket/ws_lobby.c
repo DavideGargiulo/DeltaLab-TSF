@@ -1,5 +1,6 @@
 #include "ws_lobby.h"
 #include "mongoose.h"
+#include "../lobby.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -168,21 +169,48 @@ static void handle_action_join(struct mg_connection *c, struct mg_ws_message *wm
   char player_id[32] = {0}, username[64] = {0}, lobby_id[LOBBY_ID_MAXLEN] = {0};
 
   snprintf(lobby_id, sizeof(lobby_id), "%s", st->lobby_id);
+
   json_get_str(wm, "playerId", player_id, sizeof(player_id));
   json_get_str(wm, "username", username, sizeof(username));
   json_get_str(wm, "lobbyId", lobby_id, sizeof(lobby_id)); // override se presente
 
-  struct lobby_room *r = get_or_create_room(lobby_id);
+  int player_id_int = atoi(player_id);
+  char *db_result = joinLobby(lobby_id, player_id_int);
+
+  if (!db_result) {
+    mg_ws_send(c, "{\"type\":\"error\",\"message\":\"Errore interno server\"}", 47, WEBSOCKET_OP_TEXT);
+    return;
+  }
+  if (strstr(db_result, "\"result\":false") != NULL) {
+    char error_msg[512];
+    snprintf(error_msg, sizeof(error_msg), "{\"type\":\"join_error\",\"message\":%s}", db_result);
+    mg_ws_send(c, error_msg, strlen(error_msg), WEBSOCKET_OP_TEXT);
+    free(db_result);
+    return;
+  }
+
+  free(db_result);
 
   if (strncmp(st->lobby_id, lobby_id, sizeof(st->lobby_id)) != 0) {
     snprintf(st->lobby_id, sizeof(st->lobby_id), "%s", lobby_id);
   }
 
-  // Inserisci o aggiorna client
+  struct lobby_room *r = get_or_create_room(lobby_id);
+
   struct ws_client *exists = NULL;
-  for (struct ws_client *it = r->clients; it; it = it->next) if (it->c == c) { exists = it; break; }
+  for (struct ws_client *it = r->clients; it; it = it->next) {
+    if (it->c == c) {
+      exists = it;
+      break;
+    }
+  }
+
   if (!exists) {
     struct ws_client *cl = (struct ws_client *) calloc(1, sizeof(*cl));
+    if (!cl) {
+      mg_ws_send(c, "{\"type\":\"error\",\"message\":\"Errore memoria server\"}", 50, WEBSOCKET_OP_TEXT);
+      return;
+    }
     cl->c = c;
     snprintf(cl->player_id, sizeof(cl->player_id), "%s", player_id);
     snprintf(cl->username, sizeof(cl->username), "%s", username);
@@ -203,17 +231,21 @@ static void handle_action_join(struct mg_connection *c, struct mg_ws_message *wm
 
   snprintf(st->player_id, sizeof(st->player_id), "%s", player_id);
   snprintf(st->username, sizeof(st->username), "%s", username);
-
-  db_on_player_join(r->id, player_id, username);
-
-  char msg[256];
-  snprintf(msg, sizeof(msg),
-           "{\"type\":\"player_joined\",\"playerId\":\"%s\",\"username\":\"%s\",\"players\":%d}",
-           player_id, username, r->players_count);
-  room_broadcast(r, msg);
-
+  char success_msg[256];
+  snprintf(success_msg, sizeof(success_msg),
+      "{\"type\":\"join_success\",\"playerId\":\"%s\",\"username\":\"%s\",\"lobbyId\":\"%s\"}",
+      player_id, username, lobby_id);
+  mg_ws_send(c, success_msg, strlen(success_msg), WEBSOCKET_OP_TEXT);
+  char broadcast_msg[256];
+  snprintf(broadcast_msg, sizeof(broadcast_msg),
+      "{\"type\":\"player_joined\",\"playerId\":\"%s\",\"username\":\"%s\",\"players\":%d}",
+      player_id, username, r->players_count);
+  for (struct ws_client *cl = r->clients; cl; cl = cl->next) {
+    if (cl->c != c) {
+      mg_ws_send(cl->c, broadcast_msg, strlen(broadcast_msg), WEBSOCKET_OP_TEXT);
+    }
+  }
   if (r->players_count >= r->max_players) {
-    db_on_lobby_full(r->id, r->players_count);
     room_broadcast(r, "{\"type\":\"lobby_full\"}");
   }
 }
@@ -223,13 +255,12 @@ static void get_next_player_id(struct lobby_room *r, const char *current_id,
                                char *out, size_t outlen) {
   if (!r || !r->clients || !out || outlen == 0) { if (out) out[0] = 0; return; }
 
-  struct ws_client *cur = NULL, *prev = NULL;
+  struct ws_client *cur = NULL;
   for (struct ws_client *it = r->clients; it; it = it->next) {
     if (strncmp(it->player_id, current_id ? current_id : "", sizeof(it->player_id)) == 0) {
       cur = it;
       break;
     }
-    prev = it;
   }
 
   // Se non trovo il corrente, prendo semplicemente la testa

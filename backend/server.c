@@ -5,8 +5,6 @@
 #include "controllers/authController.h"
 #include "controllers/lobbyController.h"
 #include "controllers/userController.h"
-#include "controllers/translateController.h"
-
 // NEW
 
 
@@ -32,7 +30,6 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
   if (auth_controller(c, hm)) return;
   if (lobby_controller(c, hm)) return;
   if (user_controller(c, hm)) return;
-  if (translate_controller(c, hm)) return;
 
   send_json(c, 404, "{\"result\":false,\"message\":\"Route non trovata\",\"content\":null}");
 }

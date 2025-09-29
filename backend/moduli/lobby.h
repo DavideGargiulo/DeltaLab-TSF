@@ -25,6 +25,15 @@ typedef struct {
   pthread_mutex_t mutex; // Mutex per la sincronizzazioneù
 } Lobby;
 
+typedef struct {
+  int id;
+  int playerId;
+  char lobbyId[7];
+  char status[21]; // 'active', 'waiting', 'left'
+  int position;
+  char nickname[51];
+} LobbyPlayer;
+
 char* getAllLobbies();
 
 char* getLobbyById(const char* id);
@@ -37,6 +46,10 @@ char* createLobbyEndpoint(const char* requestBody);
 
 char* deleteLobby(const char* lobbyId, int creatorId);
 
-// bool removePlayerFromLobby(Lobby* lobby, const char* playerId);
+char* joinLobby(const char* lobbyId, int playerId);
+
+char* getLobbyPlayers(const char* lobbyId);
+
+char* leaveLobby(const char* lobbyId, int playerId);
 
 #endif
