@@ -24,8 +24,7 @@ RUN gcc -O2 -Wall \
   httpUtils.c \
   controllers/authController.c \
   controllers/lobbyController.c \
-  controllers/userController.c \
-  controllers/translateController.c \
+  controllers/userController.c  \
   $(find moduli -type f -name '*.c') \
   -lpq -o server
 

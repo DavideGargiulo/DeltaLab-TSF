@@ -15,20 +15,23 @@ bool lobby_controller(struct mg_connection* c, struct mg_http_message* hm) {
     return true;
   }
 
-  // GET /lobby/:id
+  // GET /lobby/:id/players
   if (path_starts(hm->uri, "/lobby/") && mg_strcmp(hm->method, mg_str("GET")) == 0) {
-    size_t id_len = hm->uri.len - 7;
-    if (id_len < 1 || id_len > 6) {
-      send_json(c, 400, "{\"result\":false,\"message\":\"ID lobby non valido\",\"content\":null}");
+    size_t uri_len = hm->uri.len;
+    if (uri_len > 8 && strncmp(hm->uri.buf + uri_len - 8, "/players", 8) == 0) {
+      size_t id_len = uri_len - 15;  // "/lobby/" (7) + "/players" (8) = 15, so id_len = uri_len - 15
+      if (id_len < 1 || id_len > 6) {
+        send_json(c, 400, "{\"result\":false,\"message\":\"ID lobby non valido\",\"content\":null}");
+        return true;
+      }
+      char lobby_id[8] = {0};
+      snprintf(lobby_id, sizeof(lobby_id), "%.*s", (int)id_len, hm->uri.buf + 7);
+      char *response = getLobbyPlayers(lobby_id);
+      int code = (strstr(response, "\"result\":true") != NULL) ? 200 : 404;
+      send_json(c, code, response);
+      free(response);
       return true;
     }
-    char lobby_id[8] = {0};
-    snprintf(lobby_id, sizeof(lobby_id), "%.*s", (int) id_len, hm->uri.buf + 7);
-    char *response = getLobbyById(lobby_id);
-    int code = (strstr(response, "\"result\":true") != NULL) ? 200 : 404;
-    send_json(c, code, response);
-    free(response);
-    return true;
   }
 
   // POST /lobby
@@ -61,6 +64,22 @@ bool lobby_controller(struct mg_connection* c, struct mg_http_message* hm) {
       return true;
     }
     char *response = deleteLobby(lobby_id, creatorId);
+    int code = (strstr(response, "\"result\":true") != NULL) ? 200 : 404;
+    send_json(c, code, response);
+    free(response);
+    return true;
+  }
+
+  // GET /lobby/:id
+  if (path_starts(hm->uri, "/lobby/") && mg_strcmp(hm->method, mg_str("GET")) == 0) {
+    size_t id_len = hm->uri.len - 7;
+    if (id_len < 1 || id_len > 6) {
+      send_json(c, 400, "{\"result\":false,\"message\":\"ID lobby non valido\",\"content\":null}");
+      return true;
+    }
+    char lobby_id[8] = {0};
+    snprintf(lobby_id, sizeof(lobby_id), "%.*s", (int) id_len, hm->uri.buf + 7);
+    char *response = getLobbyById(lobby_id);
     int code = (strstr(response, "\"result\":true") != NULL) ? 200 : 404;
     send_json(c, code, response);
     free(response);
