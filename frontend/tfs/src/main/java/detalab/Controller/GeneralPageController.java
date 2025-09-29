@@ -1,4 +1,4 @@
-package detalab;
+package detalab.Controller;
 
 import java.io.IOException;
 import java.net.URL;
@@ -44,7 +44,7 @@ public abstract class GeneralPageController {
 
         // Configurazione della connessione
         conn.setRequestMethod(method);
-        
+
         if (method.equals("POST") || method.equals("PUT")) {
 
             conn.setRequestProperty("Content-Type", "application/json");
@@ -56,7 +56,7 @@ public abstract class GeneralPageController {
                 os.write(input, 0, input.length);
             }
         }
-        
+
         // Leggi lo status code
         int statusCode = conn.getResponseCode();
 
@@ -77,11 +77,11 @@ public abstract class GeneralPageController {
         JSONObject json = new JSONObject(responseBody);
 
         return new Response(json.getBoolean("result"), statusCode, json.getString("message"), json.optString("content", null));
-        
+
     }
 
     protected String getUsernameById(String userID) {
-        
+
         String ret = "Sconosciuto";
 
         try {

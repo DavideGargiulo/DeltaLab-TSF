@@ -1,4 +1,4 @@
-package detalab;
+package detalab.Controller;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -9,12 +9,15 @@ import java.net.URL;
 import detalab.DTO.Response;
 import detalab.DTO.User;
 import detalab.DTO.LoggedUser;
+import detalab.App;
 import org.json.*;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert.AlertType;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.stage.Stage;
 import javafx.scene.control.Alert;
 
 
@@ -24,6 +27,9 @@ public class LoginPageController extends GeneralPageController {
     private void switchToSignup() throws IOException {
         App.setRoot("signup");
     }
+
+    @FXML
+    private BorderPane root;
 
     @FXML
     TextField emailField;
@@ -54,7 +60,13 @@ public class LoginPageController extends GeneralPageController {
             if (response.getStatus() == 200) {
                 JSONObject json = new JSONObject(response.getContent());
                 LoggedUser.getInstance(new User(json.getInt("id"), json.getString("email"), json.getString("username"), json.getString("lingua")));
+
+                Stage stage = (Stage) root.getScene().getWindow();
+                stage.setWidth(1200);
+                stage.setHeight(700);
+                stage.centerOnScreen();
                 App.setRoot("main");
+                
             } else {
                 showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", response.getMessage());
             }

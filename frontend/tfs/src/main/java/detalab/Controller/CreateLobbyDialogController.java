@@ -1,4 +1,4 @@
-package detalab;
+package detalab.Controller;
 
 import java.util.ResourceBundle;
 import java.net.URL;
@@ -62,7 +62,7 @@ public class CreateLobbyDialogController extends GeneralPageController {
         boolean isPrivate = privateCheckBox.isSelected();
 
         try {
-            
+
             JSONObject json = new JSONObject();
             json.put("idCreator", LoggedUser.getInstance().getId());
             json.put("isPrivate", isPrivate);
@@ -86,7 +86,7 @@ public class CreateLobbyDialogController extends GeneralPageController {
             } else {
                 showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", response.getMessage());
             }
-            
+
         } catch (IOException e) {
             e.printStackTrace();
             showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", "Errore imprevisto!");
@@ -157,7 +157,7 @@ public class CreateLobbyDialogController extends GeneralPageController {
             rotationBox.setValue(capitalizeLastWord(translatedStrings.get(4)));
 
         } catch (Exception e) {
-            
+
             // Default transations in case of error
 
             // Labels

@@ -13,14 +13,14 @@
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane id="gamePage" fx:id="gamePage" minHeight="500" minWidth="800" prefHeight="500" prefWidth="800" stylesheets="@game_screen.css" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="detalab.GamePageController">
+<BorderPane id="gamePage" fx:id="gamePage" minHeight="700" minWidth="1200" prefHeight="700" prefWidth="1200" stylesheets="@game_screen.css" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="detalab.Controller.GamePageController">
 
     <!-- HEADER -->
     <top>
-        <HBox alignment="CENTER_LEFT" prefHeight="50" spacing="20" styleClass="header">
+        <HBox alignment="CENTER_LEFT" prefHeight="70" spacing="30" styleClass="header">
             <Label styleClass="title" text="Playing" />
             <Label fx:id="playingCount" styleClass="count-label" text="0/8" />
-         <Label fx:id="codeLabel" styleClass="title" text="CODE HERE" />
+            <Label fx:id="codeLabel" styleClass="title" text="CODE HERE" />
             <Region HBox.hgrow="ALWAYS" />
             <Button onAction="#exit" styleClass="footer-button" text="Exit" />
         </HBox>
@@ -33,8 +33,8 @@
             <!-- Giocatori in cerchio -->
             <Pane fx:id="playersPane">
                 <!-- Player 1 - Top Center -->
-                <VBox fx:id="player4" alignment="CENTER" layoutX="280.0" layoutY="10" styleClass="player-box">
-                    <ImageView fitHeight="50" fitWidth="50" preserveRatio="true">
+                <VBox fx:id="player4" alignment="CENTER" layoutX="460.0" layoutY="20" styleClass="player-box">
+                    <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
                         <image>
                             <Image url="@../imgs/user.png" />
                         </image>
@@ -43,8 +43,8 @@
                 </VBox>
 
                 <!-- Player 2 - Top Right -->
-                <VBox fx:id="player5" alignment="CENTER" layoutX="440.0" layoutY="45" styleClass="player-box">
-                    <ImageView fitHeight="50" fitWidth="50" preserveRatio="true">
+                <VBox fx:id="player5" alignment="CENTER" layoutX="680.0" layoutY="70" styleClass="player-box">
+                    <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
                         <image>
                             <Image url="@../imgs/user.png" />
                         </image>
@@ -53,8 +53,8 @@
                 </VBox>
 
                 <!-- Player 3 - Middle Right -->
-                <VBox fx:id="player6" alignment="CENTER" layoutX="500" layoutY="145" styleClass="player-box">
-                    <ImageView fitHeight="50" fitWidth="50" preserveRatio="true">
+                <VBox fx:id="player6" alignment="CENTER" layoutX="770" layoutY="230" styleClass="player-box">
+                    <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
                         <image>
                             <Image url="@../imgs/user.png" />
                         </image>
@@ -63,8 +63,8 @@
                 </VBox>
 
                 <!-- Player 4 - Bottom Right -->
-                <VBox fx:id="player7" alignment="CENTER" layoutX="440" layoutY="255" styleClass="player-box">
-                    <ImageView fitHeight="50" fitWidth="50" preserveRatio="true">
+                <VBox fx:id="player7" alignment="CENTER" layoutX="680" layoutY="390" styleClass="player-box">
+                    <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
                         <image>
                             <Image url="@../imgs/user.png" />
                         </image>
@@ -73,8 +73,8 @@
                 </VBox>
 
                 <!-- Player 5 - Bottom Center -->
-                <VBox fx:id="player0" alignment="CENTER" layoutX="280.0" layoutY="290.0" styleClass="player-box">
-                    <ImageView fitHeight="50" fitWidth="50" preserveRatio="true">
+                <VBox fx:id="player0" alignment="CENTER" layoutX="460.0" layoutY="450.0" styleClass="player-box">
+                    <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
                         <image>
                             <Image url="@../imgs/user.png" />
                         </image>
@@ -83,8 +83,8 @@
                 </VBox>
 
                 <!-- Player 6 - Bottom Left -->
-                <VBox fx:id="player1" alignment="CENTER" layoutX="120" layoutY="255" styleClass="player-box">
-                    <ImageView fitHeight="50" fitWidth="50" preserveRatio="true">
+                <VBox fx:id="player1" alignment="CENTER" layoutX="240" layoutY="390" styleClass="player-box">
+                    <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
                         <image>
                             <Image url="@../imgs/user.png" />
                         </image>
@@ -93,8 +93,8 @@
                 </VBox>
 
                 <!-- Player 7 - Middle Left -->
-                <VBox fx:id="player2" alignment="CENTER" layoutX="50" layoutY="145" styleClass="player-box">
-                    <ImageView fitHeight="50" fitWidth="50" preserveRatio="true">
+                <VBox fx:id="player2" alignment="CENTER" layoutX="150" layoutY="230" styleClass="player-box">
+                    <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
                         <image>
                             <Image url="@../imgs/user.png" />
                         </image>
@@ -103,8 +103,8 @@
                 </VBox>
 
                 <!-- Player 8 - Top Left -->
-                <VBox fx:id="player3" alignment="CENTER" layoutX="130" layoutY="45" styleClass="player-box">
-                    <ImageView fitHeight="50" fitWidth="50" preserveRatio="true">
+                <VBox fx:id="player3" alignment="CENTER" layoutX="240" layoutY="70" styleClass="player-box">
+                    <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
                         <image>
                             <Image url="@../imgs/user.png" />
                         </image>
@@ -113,24 +113,24 @@
                 </VBox>
 
                 <!-- Frase centrale -->
-                <Label fx:id="phraseLabel" alignment="CENTER" layoutX="215.0" layoutY="170.0" prefWidth="200" styleClass="phrase-label" text="phrase ........" />
+                <Label fx:id="phraseLabel" alignment="CENTER" layoutX="360.0" layoutY="260.0" prefWidth="280" styleClass="phrase-label" text="phrase ........" />
             </Pane>
         </StackPane>
     </center>
 
     <!-- DESTRA: lista waiting -->
     <right>
-        <VBox alignment="TOP_CENTER" prefWidth="160" spacing="10" styleClass="right-pane" BorderPane.alignment="CENTER">
+        <VBox alignment="TOP_CENTER" prefWidth="200" spacing="15" styleClass="right-pane" BorderPane.alignment="CENTER">
             <Label styleClass="title" text="Waiting" />
-            <ListView fx:id="waitingList" prefHeight="280" prefWidth="140" styleClass="waiting-list" />
+            <ListView fx:id="waitingList" prefHeight="450" prefWidth="180" styleClass="waiting-list" />
         </VBox>
     </right>
 
     <!-- FOOTER -->
     <bottom>
-        <HBox alignment="CENTER" prefHeight="50" spacing="10" styleClass="footer">
-            <TextField fx:id="inputField" prefWidth="400" promptText="input text" styleClass="text-field" />
-            <Button prefHeight="35" prefWidth="80" styleClass="action-button" text="Submit" />
+        <HBox alignment="CENTER" prefHeight="70" spacing="15" styleClass="footer">
+            <TextField fx:id="inputField" prefWidth="600" promptText="input text" styleClass="text-field" />
+            <Button prefHeight="45" prefWidth="100" styleClass="action-button" text="Submit" />
         </HBox>
     </bottom>
 </BorderPane>

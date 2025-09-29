@@ -1,4 +1,4 @@
-package detalab;
+package detalab.Controller;
 
 import java.io.IOException;
 import java.net.URL;
@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.net.HttpURLConnection;
 import detalab.DTO.Response;
 import detalab.DTO.LanguageHelper;
+import detalab.App;
 import org.json.*;
 
 import javafx.scene.control.Alert.AlertType;
@@ -55,7 +56,7 @@ public class SignupPageController extends GeneralPageController {
             System.out.println("status: " + response.getStatus());
             System.out.println("message: " + response.getMessage());
             System.out.println("content: " + response.getContent() + "\n");
-    
+
             if (response.getStatus() == 201) {
                 showAlert(AlertType.INFORMATION, "Successo", "Registrazione avvenuta con successo.", "Benvenuto in DeltaLab!");
                 App.setRoot("login");

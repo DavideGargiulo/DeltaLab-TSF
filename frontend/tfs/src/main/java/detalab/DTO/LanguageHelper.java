@@ -1,7 +1,7 @@
 package detalab.DTO;
 
 import java.util.*;
-import detalab.GeneralPageController;
+import detalab.Controller.GeneralPageController;
 import org.json.JSONObject;
 import java.net.URL;
 import java.net.HttpURLConnection;
@@ -12,7 +12,7 @@ import detalab.DTO.LoggedUser;
 import java.io.IOException;
 
 public class LanguageHelper extends GeneralPageController{
-  
+
     private static final Map<String, String> languages = new LinkedHashMap<>();
     static {
         languages.put("it", "Italiano");
@@ -95,7 +95,7 @@ public class LanguageHelper extends GeneralPageController{
             byte[] input = requestBody.toString().getBytes("utf-8");
             os.write(input, 0, input.length);
         }
-        
+
         // Leggi lo status code
         int statusCode = conn.getResponseCode();
 

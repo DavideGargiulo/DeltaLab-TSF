@@ -1,4 +1,4 @@
-package detalab;
+package detalab.Controller;
 
 import java.util.ResourceBundle;
 import java.net.URL;
@@ -13,6 +13,7 @@ import detalab.DTO.User;
 import detalab.DTO.CurrentLobby;
 import detalab.DTO.Lobby;
 import detalab.DTO.LanguageHelper;
+import detalab.App;
 import org.json.*;
 
 import javafx.fxml.FXML;
@@ -66,7 +67,7 @@ public class MainPageController extends GeneralPageController {
 
     @FXML
     private Button randomJoinButton;
-    
+
     @FXML
     private Button joinButton;
 
@@ -100,7 +101,7 @@ public class MainPageController extends GeneralPageController {
                 showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", response.getMessage());
             }
 
-            
+
         } catch (Exception e) {
             e.printStackTrace();
             showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", "Errore imprevisto!");
@@ -109,7 +110,7 @@ public class MainPageController extends GeneralPageController {
     }
 
     private List<Lobby> parseLobbies(String content) {
-        
+
         List<Lobby> lobbies = new ArrayList<>();
 
         JSONArray array = new JSONArray(content);
@@ -167,11 +168,15 @@ public class MainPageController extends GeneralPageController {
     @FXML
     private void exit() throws IOException {
         LoggedUser.cleanUserSession();
+        Stage stage = (Stage) mainPage.getScene().getWindow();
+        stage.setWidth(800);
+        stage.setHeight(500);
+        stage.centerOnScreen();
         App.setRoot("login");
     }
 
     @FXML
-    private void joinRandomLobby() {    
+    private void joinRandomLobby() {
         if (lobbyList.getItems().isEmpty()) {
             showAlert(AlertType.INFORMATION, "Nessuna lobby disponibile", null, "Non ci sono lobby disponibili a cui unirsi.");
             return;
@@ -194,7 +199,7 @@ public class MainPageController extends GeneralPageController {
         }
 
         try {
-            
+
             Response response = makeRequest("lobby/" + lobbyID, "GET", 200);
 
             String content = response.getContent();
@@ -236,7 +241,7 @@ public class MainPageController extends GeneralPageController {
             e.printStackTrace();
             showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", "Errore imprevisto!");
         }
-        
+
         //TODO: Rimuovere il commento quando il backend supporterà l'entrata in lobby
 
     }
