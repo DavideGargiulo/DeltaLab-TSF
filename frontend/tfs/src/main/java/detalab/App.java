@@ -22,7 +22,7 @@ public class App extends Application {
         stage.setScene(scene);
         stage.setTitle("TSF - DeltaLab");
         stage.setResizable(false);
-        stage.initStyle(StageStyle.UNDECORATED);
+        // stage.initStyle(StageStyle.UNDECORATED);
         stage.centerOnScreen();
         stage.show();
     }
