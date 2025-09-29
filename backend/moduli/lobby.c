@@ -47,7 +47,7 @@ char* getAllLobbies() {
   const char *host = getenv("DB_HOST");
   if (!host) host = "db";
 
-  DBConnection *conn = dbConnectWithOptions(host, "deltalabtsf", "postgres", "admin", 30);
+  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
   if (!conn || !dbIsConnected(conn)) {
     if (conn) dbDisconnect(conn);
     return strdup("{\"result\":false,\"message\":\"Connessione al database fallita\",\"content\":null}");
@@ -146,7 +146,7 @@ char* getLobbyById(const char* id) {
   const char *host = getenv("DB_HOST");
   if (!host) host = "db";
 
-  DBConnection *conn = dbConnectWithOptions(host, "deltalabtsf", "postgres", "admin", 30);
+  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
   if (!conn || !dbIsConnected(conn)) {
     if (conn) dbDisconnect(conn);
     return strdup("{\"result\":false,\"message\":\"Errore connessione database\",\"content\":null}");
@@ -217,7 +217,7 @@ Lobby* createLobby(int idCreator, bool isPrivate, LobbyRotation rotation) {
   const char *host = getenv("DB_HOST");
   if (!host) host = "db";
 
-  DBConnection *conn = dbConnectWithOptions(host, "deltalabtsf", "postgres", "admin", 30);
+  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
   if (!conn || !dbIsConnected(conn)) {
     fprintf(stderr, "Impossibile connettersi al database\n");
     if (conn) dbDisconnect(conn);
@@ -444,7 +444,7 @@ char* deleteLobby(const char* lobbyId, int creatorId) {
   const char *host = getenv("DB_HOST");
   if (!host) host = "db";
   
-  DBConnection *conn = dbConnectWithOptions(host, "deltalabtsf", "postgres", "admin", 30);
+  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
   if (!conn || !dbIsConnected(conn)) {
     if (conn) dbDisconnect(conn);
     return strdup("{\"result\":false,\"message\":\"Connessione al database fallita\",\"content\":null}");
@@ -512,7 +512,7 @@ char* getPlayerInfoById(int playerId) {
   const char *host = getenv("DB_HOST");
   if (!host) host = "db";
 
-  DBConnection *conn = dbConnectWithOptions(host, "deltalabtsf", "postgres", "admin", 30);
+  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
   if (!conn || !dbIsConnected(conn)) {
     if (conn) dbDisconnect(conn);
     return strdup("{\"result\":false,\"message\":\"Connessione al database fallita\",\"content\":null}");
