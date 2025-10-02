@@ -85,7 +85,7 @@
 }
 
 /* Ogni singola cella di header */
-.table-view .column-header, 
+.table-view .column-header,
 .table-view .filler {
     -fx-background-color: transparent;  /* sfondo della cella */
 }
@@ -135,4 +135,25 @@
 .table-view .table-row-cell:selected {
     -fx-background-color: rgba(66,165,245,0.50);
     -fx-text-fill: white;
+}
+/* Placeholder creato dal controller */
+.table-view .table-placeholder {
+    -fx-padding: 0;
+}
+
+/* Celle “fittizie” alternate */
+.table-view .placeholder-cell-odd {
+    -fx-background-color: rgba(255,255,255,0.05);
+    -fx-border-width: 0 0 1 0;
+    -fx-border-style: solid;
+    -fx-border-color: rgba(255,255,255,0.03);
+    -fx-min-height: 0;
+}
+
+.table-view .placeholder-cell-even {
+    -fx-background-color: rgba(255,255,255,0.10);
+    -fx-border-width: 0 0 1 0;
+    -fx-border-style: solid;
+    -fx-border-color: rgba(255,255,255,0.03);
+    -fx-min-height: 0;
 }

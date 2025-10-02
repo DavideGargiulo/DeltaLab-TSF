@@ -13,6 +13,7 @@ import detalab.DTO.LanguageHelper;
 import detalab.App;
 import org.json.*;
 
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.Button;
@@ -22,11 +23,15 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.Alert.AlertType;
 import javafx.fxml.FXMLLoader;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 import javafx.stage.Modality;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
 
 
 public class MainPageController extends GeneralPageController {
@@ -92,7 +97,11 @@ public class MainPageController extends GeneralPageController {
             if (response.getStatus() == 200) {
                 List<Lobby> lobbies = parseLobbies(content);
                 lobbyList.getItems().clear();
-                lobbyList.getItems().addAll(lobbies);
+                if (lobbies.isEmpty()) {
+                    installStripedPlaceholder(lobbyList, 30);
+                } else {
+                    lobbyList.getItems().addAll(lobbies);
+                }
             } else {
                 showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", response.getMessage());
             }
@@ -240,8 +249,6 @@ public class MainPageController extends GeneralPageController {
             showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", "Errore imprevisto!");
         }
 
-        //TODO: Rimuovere il commento quando il backend supporterà l'entrata in lobby
-
     }
 
     private void translateUI() {
@@ -298,6 +305,44 @@ public class MainPageController extends GeneralPageController {
             e.printStackTrace();
             showAlert(AlertType.ERROR, "Error", "An error occurred.", "Unable to translate!");
         }
+    }
+
+    private void installStripedPlaceholder(TableView<?> table, double rowHeight) {
+        table.setFixedCellSize(rowHeight);
+
+        Runnable rebuild = () -> {
+            Node header = table.lookup(".column-header-background");
+            double headerHeight = header == null ? 0 : header.prefHeight(-1);
+            double avail = table.getHeight() - headerHeight;
+            int rows = Math.max(1, (int) Math.ceil(avail / rowHeight));
+
+            VBox placeholder = new VBox();
+            placeholder.setFillWidth(true);
+
+            for (int r = 0; r < rows; r++) {
+                HBox row = new HBox();
+                row.setPrefHeight(rowHeight);
+                for (TableColumn<?, ?> col : table.getColumns()) {
+                    Region cell = new Region();
+                    cell.prefHeightProperty().bind(row.heightProperty());
+                    // bindiamo la larghezza della "cella finta" alla colonna reale
+                    cell.prefWidthProperty().bind(col.widthProperty());
+                    cell.getStyleClass().add(r % 2 == 0 ? "placeholder-cell-even" : "placeholder-cell-odd");
+                    row.getChildren().add(cell);
+                }
+                placeholder.getChildren().add(row);
+            }
+
+            placeholder.getStyleClass().add("table-placeholder");
+            table.setPlaceholder(placeholder);
+        };
+
+        // ricostruisci quando la tabella cambia altezza o cambiano le colonne
+        table.heightProperty().addListener((o, oldV, newV) -> rebuild.run());
+        table.getColumns().forEach(c -> c.widthProperty().addListener((o, oldV, newV) -> rebuild.run()));
+
+        // esegui al next pulse per avere dimensioni corrette
+        Platform.runLater(rebuild);
     }
 
     @FXML

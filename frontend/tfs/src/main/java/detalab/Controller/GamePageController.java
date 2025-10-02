@@ -2,6 +2,7 @@ package detalab.Controller;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import javafx.fxml.FXML;
@@ -15,6 +16,8 @@ import detalab.DTO.LanguageHelper;
 import detalab.DTO.LobbyWebSocketClient;
 import detalab.DTO.LoggedUser;
 import detalab.App;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 public class GamePageController extends GeneralPageController {
 
@@ -41,6 +44,18 @@ public class GamePageController extends GeneralPageController {
 
     @FXML
     Label phraseLabel;
+
+    private class PlayerUI {
+        VBox container;
+        Label username;
+
+        PlayerUI(VBox container, Label username) {
+            this.container = container;
+            this.username = username;
+        }
+    }
+
+    private List<PlayerUI> players;
 
     @FXML
     VBox player0;
@@ -111,7 +126,14 @@ public class GamePageController extends GeneralPageController {
     @FXML
     private void exit() throws IOException {
         CurrentLobby.cleanLobby();
-        client.shutdown();
+        if (client != null) {
+            try {
+                client.leaveLobby().get();
+                client.shutdown();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
         App.setRoot("main");
     }
 
@@ -151,8 +173,8 @@ public class GamePageController extends GeneralPageController {
             codeLabel.setText("Code: " + CurrentLobby.getInstance().getLobbyID());
             playingLabel.setText("Playing");
             waitingLabel.setText("Waiting");
-            inputField.setPromptText("Input text...");
-            submitButton.setText("Submit");
+            inputField.setPromptText("Text");
+            submitButton.setText("Send");
             exitButton.setText("Exit");
 
             e.printStackTrace();
@@ -163,13 +185,9 @@ public class GamePageController extends GeneralPageController {
     }
 
     private void setItemsNotVisible() {
-        player1.setVisible(false);
-        player2.setVisible(false);
-        player3.setVisible(false);
-        player4.setVisible(false);
-        player5.setVisible(false);
-        player6.setVisible(false);
-        player7.setVisible(false);
+        for (PlayerUI player : players) {
+            player.container.setVisible(false);
+        }
         phraseLabel.setVisible(false);
     }
 
@@ -181,16 +199,42 @@ public class GamePageController extends GeneralPageController {
     public GamePageController() {
         try {
             client = new LobbyWebSocketClient("localhost", 8080, lobby.getLobbyID());
+            setupWebSocketHandlers();
         } catch (Exception e) {
             e.printStackTrace();
             client = null;
         }
     }
 
+
+    // Configura tutti gli handler per i messaggi WebSocket
+    private void setupWebSocketHandlers() {
+
+        // TODO: implement all handlers
+
+
+    }
+
+    //Aggiorna il contatore dei giocatori con formato n/max
+    private void updatePlayersCount(int totalPlayers) {
+        playingCount.setText(totalPlayers + "/8");
+    }
+
+
     @FXML
     public void initialize() {
 
         translateUI();
+
+        players = Arrays.<PlayerUI>asList(
+            new PlayerUI(player1, username1),
+            new PlayerUI(player2, username2),
+            new PlayerUI(player3, username3),
+            new PlayerUI(player4, username4),
+            new PlayerUI(player5, username5),
+            new PlayerUI(player6, username6),
+            new PlayerUI(player7, username7)
+        );
 
         setItemsNotVisible();
 
@@ -199,8 +243,8 @@ public class GamePageController extends GeneralPageController {
             client.joinLobby(String.valueOf(user.getId()), user.getUsername(), lobby.getLobbyID()).get();
         } catch (Exception e) {
             e.printStackTrace();
+            showAlert(AlertType.ERROR, "Connection Error",
+                "Unable to connect to the lobby", e.getMessage());
         }
-
-
     }
 }
