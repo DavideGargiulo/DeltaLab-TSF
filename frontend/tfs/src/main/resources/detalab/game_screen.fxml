@@ -18,11 +18,11 @@
     <!-- HEADER -->
     <top>
         <HBox alignment="CENTER_LEFT" prefHeight="70" spacing="30" styleClass="header">
-            <Label styleClass="title" text="Playing" />
+            <Label fx:id="playingLabel" styleClass="title" text="Playing" />
             <Label fx:id="playingCount" styleClass="count-label" text="0/8" />
             <Label fx:id="codeLabel" styleClass="title" text="CODE HERE" />
             <Region HBox.hgrow="ALWAYS" />
-            <Button onAction="#exit" styleClass="footer-button" text="Exit" />
+            <Button fx:id="exitButton" onAction="#exit" styleClass="footer-button" text="Exit" />
         </HBox>
     </top>
 
@@ -121,7 +121,7 @@
     <!-- DESTRA: lista waiting -->
     <right>
         <VBox alignment="TOP_CENTER" prefWidth="200" spacing="15" styleClass="right-pane" BorderPane.alignment="CENTER">
-            <Label styleClass="title" text="Waiting" />
+            <Label fx:id="waitingLabel" styleClass="title" text="Waiting" />
             <ListView fx:id="waitingList" prefHeight="450" prefWidth="180" styleClass="waiting-list" />
         </VBox>
     </right>
@@ -130,7 +130,7 @@
     <bottom>
         <HBox alignment="CENTER" prefHeight="70" spacing="15" styleClass="footer">
             <TextField fx:id="inputField" prefWidth="600" promptText="input text" styleClass="text-field" />
-            <Button prefHeight="45" prefWidth="100" styleClass="action-button" text="Submit" />
+            <Button fx:id="submitButton" prefHeight="45" prefWidth="100" styleClass="action-button" text="Submit" />
         </HBox>
     </bottom>
 </BorderPane>
