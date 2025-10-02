@@ -168,9 +168,16 @@ public class MainPageController extends GeneralPageController {
     @FXML
     private void exit() throws IOException {
         LoggedUser.cleanUserSession();
-        Stage stage = (Stage) mainPage.getScene().getWindow();
-        stage.setWidth(800);
-        stage.setHeight(500);
+        // Stage stage = (Stage) mainPage.getScene().getWindow();
+        // stage.setWidth(800);
+        // stage.setHeight(500);
+        // stage.centerOnScreen();
+        // App.setRoot("login");
+        Scene scene = mainPage.getScene();
+        Stage stage = (Stage) scene.getWindow();
+        // Imposta le dimensioni della Scene
+        scene.getWindow().setWidth(800 + (stage.getWidth() - scene.getWidth()));
+        scene.getWindow().setHeight(500 + (stage.getHeight() - scene.getHeight()));
         stage.centerOnScreen();
         App.setRoot("login");
     }

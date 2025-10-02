@@ -18,6 +18,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
+import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 
 
@@ -60,13 +61,14 @@ public class LoginPageController extends GeneralPageController {
             if (response.getStatus() == 200) {
                 JSONObject json = new JSONObject(response.getContent());
                 LoggedUser.getInstance(new User(json.getInt("id"), json.getString("email"), json.getString("username"), json.getString("lingua")));
-
-                Stage stage = (Stage) root.getScene().getWindow();
-                stage.setWidth(1200);
-                stage.setHeight(700);
+                Scene scene = root.getScene();
+                Stage stage = (Stage) scene.getWindow();
+                // Imposta le dimensioni della Scene
+                scene.getWindow().setWidth(1200 + (stage.getWidth() - scene.getWidth()));
+                scene.getWindow().setHeight(700 + (stage.getHeight() - scene.getHeight()));
                 stage.centerOnScreen();
                 App.setRoot("main");
-                
+
             } else {
                 showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", response.getMessage());
             }
