@@ -47,7 +47,7 @@ char* getAllLobbies() {
   const char *host = getenv("DB_HOST");
   if (!host) host = "db";
 
-  DBConnection *conn = dbConnectWithOptions(host, "deltalabtsf", "postgres", "admin", 30);
+  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
   if (!conn || !dbIsConnected(conn)) {
     if (conn) dbDisconnect(conn);
     return strdup("{\"result\":false,\"message\":\"Connessione al database fallita\",\"content\":null}");
@@ -146,7 +146,7 @@ char* getLobbyById(const char* id) {
   const char *host = getenv("DB_HOST");
   if (!host) host = "db";
 
-  DBConnection *conn = dbConnectWithOptions(host, "deltalabtsf", "postgres", "admin", 30);
+  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
   if (!conn || !dbIsConnected(conn)) {
     if (conn) dbDisconnect(conn);
     return strdup("{\"result\":false,\"message\":\"Errore connessione database\",\"content\":null}");
@@ -217,7 +217,7 @@ Lobby* createLobby(int idCreator, bool isPrivate, LobbyRotation rotation) {
   const char *host = getenv("DB_HOST");
   if (!host) host = "db";
 
-  DBConnection *conn = dbConnectWithOptions(host, "deltalabtsf", "postgres", "admin", 30);
+  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
   if (!conn || !dbIsConnected(conn)) {
     fprintf(stderr, "Impossibile connettersi al database\n");
     if (conn) dbDisconnect(conn);
@@ -444,7 +444,7 @@ char* deleteLobby(const char* lobbyId, int creatorId) {
   const char *host = getenv("DB_HOST");
   if (!host) host = "db";
 
-  DBConnection *conn = dbConnectWithOptions(host, "deltalabtsf", "postgres", "admin", 30);
+  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
   if (!conn || !dbIsConnected(conn)) {
     if (conn) dbDisconnect(conn);
     return strdup("{\"result\":false,\"message\":\"Connessione al database fallita\",\"content\":null}");
@@ -512,7 +512,7 @@ char* getPlayerInfoById(int playerId) {
   const char *host = getenv("DB_HOST");
   if (!host) host = "db";
 
-  DBConnection *conn = dbConnectWithOptions(host, "deltalabtsf", "postgres", "admin", 30);
+  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
   if (!conn || !dbIsConnected(conn)) {
     if (conn) dbDisconnect(conn);
     return strdup("{\"result\":false,\"message\":\"Connessione al database fallita\",\"content\":null}");
@@ -577,7 +577,7 @@ char* joinLobby(const char* lobbyId, int playerId) {
   const char *host = getenv("DB_HOST");
   if (!host) host = "db";
 
-  DBConnection *conn = dbConnectWithOptions(host, "deltalabtsf", "postgres", "admin", 30);
+  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
   if (!conn || !dbIsConnected(conn)) {
     if (conn) dbDisconnect(conn);
     return strdup("{\"result\":false,\"message\":\"Connessione al database fallita\",\"content\":null}");
@@ -723,7 +723,7 @@ char* getLobbyPlayers(const char* lobbyId) {
   const char *host = getenv("DB_HOST");
   if (!host) host = "db";
 
-  DBConnection *conn = dbConnectWithOptions(host, "deltalabtsf", "postgres", "admin", 30);
+  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
   if (!conn || !dbIsConnected(conn)) {
     if (conn) dbDisconnect(conn);
     return strdup("{\"result\":false,\"message\":\"Connessione al database fallita\",\"content\":null}");
@@ -823,7 +823,7 @@ char* leaveLobby(const char* lobbyId, int playerId) {
   const char *host = getenv("DB_HOST");
   if (!host) host = "db";
 
-  DBConnection *conn = dbConnectWithOptions(host, "deltalabtsf", "postgres", "admin", 30);
+  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
   if (!conn || !dbIsConnected(conn)) {
     if (conn) dbDisconnect(conn);
     return strdup("{\"result\":false,\"message\":\"Connessione al database fallita\",\"content\":null}");
@@ -933,15 +933,10 @@ char* leaveLobby(const char* lobbyId, int playerId) {
   PQclear(delete_res);
 
   if (was_active) {
-    // Decrementa il contatore utenti_connessi
-    const char *decr_sql = "UPDATE lobby SET utenti_connessi = utenti_connessi - 1 WHERE id = $1";
-    const char *lobby_params[1] = { lobbyId };
-    PGresult *decr_res = dbExecutePrepared(conn, decr_sql, 1, lobby_params);
-    if (decr_res) PQclear(decr_res);
-
     // Trova il prossimo in coda (il più piccolo position)
     const char *next_sql = "SELECT player_id FROM lobby_players WHERE lobby_id = $1 AND status = 'waiting' ORDER BY position ASC LIMIT 1 FOR UPDATE";
-    PGresult *next_res = dbExecutePrepared(conn, next_sql, 1, lobby_params);
+    const char *next_params[1] = { lobbyId };  // FIX: definisci next_params invece di usare lobby_params
+    PGresult *next_res = dbExecutePrepared(conn, next_sql, 1, next_params);
     if (next_res && PQntuples(next_res) > 0) {
       const char *next_player_id = PQgetvalue(next_res, 0, 0);
 
@@ -950,15 +945,7 @@ char* leaveLobby(const char* lobbyId, int playerId) {
       const char *promote_params[2] = { lobbyId, next_player_id };
       PGresult *promote_res = dbExecutePrepared(conn, promote_sql, 2, promote_params);
       if (promote_res) {
-        long promoted = strtol(PQcmdTuples(promote_res), NULL, 10);
-        PQclear(promote_res);
-
-        if (promoted > 0) {
-          // Incrementa il contatore utenti_connessi
-          const char *incr_sql = "UPDATE lobby SET utenti_connessi = utenti_connessi + 1 WHERE id = $1";
-          PGresult *incr_res = dbExecutePrepared(conn, incr_sql, 1, lobby_params);
-          if (incr_res) PQclear(incr_res);
-        }
+        PQclear(promote_res);  // FIX: rimuovi la variabile 'promoted' inutilizzata
       }
 
       PQclear(next_res);

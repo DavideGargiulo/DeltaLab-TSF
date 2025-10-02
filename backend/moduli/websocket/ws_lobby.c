@@ -33,6 +33,14 @@ static struct {
   struct lobby_room *rooms;
 } s_ws;
 
+typedef struct {
+  bool success;
+  bool lobby_deleted;
+  char *error_msg;
+} LeaveResult;
+
+static LeaveResult db_on_player_leave(const char *lobby_id, int player_id);
+
 // ======= Utility =======
 
 static const char* find_substr(const char* hay, size_t hlen, const char* needle) {
@@ -79,7 +87,6 @@ static void remove_client(struct lobby_room *r, struct mg_connection *c, const c
       struct ws_client *dead = *pp;
       *pp = (*pp)->next;
       if (r->players_count > 0) r->players_count--;
-      db_on_player_leave(r->id, (player_id && *player_id) ? player_id : dead->player_id);
       free(dead);
       break;
     }
@@ -172,24 +179,24 @@ static void handle_action_join(struct mg_connection *c, struct mg_ws_message *wm
 
   json_get_str(wm, "playerId", player_id, sizeof(player_id));
   json_get_str(wm, "username", username, sizeof(username));
-  json_get_str(wm, "lobbyId", lobby_id, sizeof(lobby_id)); // override se presente
+  json_get_str(wm, "lobbyId", lobby_id, sizeof(lobby_id));
 
   int player_id_int = atoi(player_id);
-  char *db_result = joinLobby(lobby_id, player_id_int);
 
-  if (!db_result) {
-    mg_ws_send(c, "{\"type\":\"error\",\"message\":\"Errore interno server\"}", 47, WEBSOCKET_OP_TEXT);
+  char *error_msg = NULL;
+  if (!db_on_player_join(lobby_id, player_id_int, &error_msg)) {
+    char error_response[512];
+    if (error_msg) {
+      snprintf(error_response, sizeof(error_response),
+              "{\"type\":\"join_error\",\"message\":%s}", error_msg);
+      free(error_msg);
+    } else {
+      snprintf(error_response, sizeof(error_response),
+              "{\"type\":\"error\",\"message\":\"Errore join\"}");
+    }
+    mg_ws_send(c, error_response, strlen(error_response), WEBSOCKET_OP_TEXT);
     return;
   }
-  if (strstr(db_result, "\"result\":false") != NULL) {
-    char error_msg[512];
-    snprintf(error_msg, sizeof(error_msg), "{\"type\":\"join_error\",\"message\":%s}", db_result);
-    mg_ws_send(c, error_msg, strlen(error_msg), WEBSOCKET_OP_TEXT);
-    free(db_result);
-    return;
-  }
-
-  free(db_result);
 
   if (strncmp(st->lobby_id, lobby_id, sizeof(st->lobby_id)) != 0) {
     snprintf(st->lobby_id, sizeof(st->lobby_id), "%s", lobby_id);
@@ -274,21 +281,70 @@ static void get_next_player_id(struct lobby_room *r, const char *current_id,
   snprintf(out, outlen, "%s", next ? next->player_id : "");
 }
 
-
 static void handle_action_leave(struct mg_connection *c, struct conn_state *st) {
   if (!*st->lobby_id) return;
+
   struct lobby_room *r = find_room(st->lobby_id);
   if (!r) return;
 
-  remove_client(r, c, st->player_id);
+  // Chiama la funzione DB (ora con conversione corretta)
+  int player_id_int = atoi(st->player_id);
+  LeaveResult result = db_on_player_leave(st->lobby_id, player_id_int);
 
-  char msg[256];
-  snprintf(msg, sizeof(msg),
-           "{\"type\":\"player_left\",\"playerId\":\"%s\",\"players\":%d}",
-           st->player_id, r->players_count);
-  room_broadcast(r, msg);
+  if (!result.success) {
+    char error_response[512];
+    if (result.error_msg) {
+      snprintf(error_response, sizeof(error_response),
+              "{\"type\":\"leave_error\",\"message\":%s}", result.error_msg);
+      free(result.error_msg);
+    } else {
+      snprintf(error_response, sizeof(error_response),
+              "{\"type\":\"error\",\"message\":\"Errore leave\"}");
+    }
+    mg_ws_send(c, error_response, strlen(error_response), WEBSOCKET_OP_TEXT);
+    return;
+  }
 
-  delete_room_if_empty(r);
+  // Se la lobby è stata eliminata (creatore uscito)
+  if (result.lobby_deleted) {
+    room_broadcast(r, "{\"type\":\"lobby_deleted\",\"message\":\"Il creatore ha chiuso la lobby\"}");
+
+    // Chiudi tutte le connessioni
+    struct ws_client *cl = r->clients;
+    while (cl) {
+      struct ws_client *next = cl->next;
+      if (cl->c && !cl->c->is_closing) {
+        cl->c->is_closing = 1;
+      }
+      free(cl);
+      cl = next;
+    }
+
+    // Rimuovi room
+    struct lobby_room **pp = &s_ws.rooms;
+    while (*pp) {
+      if (*pp == r) {
+        *pp = r->next;
+        free(r);
+        break;
+      }
+      pp = &(*pp)->next;
+    }
+  } else {
+    // Giocatore normale esce
+    remove_client(r, c, st->player_id);
+
+    char msg[256];
+    snprintf(msg, sizeof(msg),
+            "{\"type\":\"player_left\",\"playerId\":\"%s\",\"players\":%d}",
+            st->player_id, r->players_count);
+    room_broadcast(r, msg);
+
+    delete_room_if_empty(r);
+  }
+
+  // Reset stato
+  st->lobby_id[0] = 0;
   st->player_id[0] = 0;
   st->username[0] = 0;
 }
@@ -464,12 +520,58 @@ void ws_lobby_init(struct mg_mgr *mgr) {
 
 // ======= Stub DB =======
 
-void db_on_player_join(const char *lobby_id, const char *player_id, const char *username) {
-  printf("[DB] join lobby=%s player=%s user=%s\n", lobby_id, player_id, username);
+bool db_on_player_join(const char *lobby_id, int player_id, char **error_msg) {
+  if (!lobby_id || player_id <= 0) {
+    if (error_msg) *error_msg = strdup("Parametri non validi");
+    return false;
+  }
+
+  char *db_result = joinLobby(lobby_id, player_id);
+  if (!db_result) {
+    if (error_msg) *error_msg = strdup("Errore interno server");
+    return false;
+  }
+
+  // Verifica se il risultato indica un errore
+  if (strstr(db_result, "\"result\":false") != NULL) {
+    if (error_msg) {
+      *error_msg = db_result;
+    } else {
+      free(db_result);
+    }
+    return false;
+  }
+
+  free(db_result);
+  return true;
 }
-void db_on_player_leave(const char *lobby_id, const char *player_id) {
-  printf("[DB] leave lobby=%s player=%s\n", lobby_id, player_id);
+
+static LeaveResult db_on_player_leave(const char *lobby_id, int player_id) {
+  LeaveResult result = {false, false, NULL};
+  if (!lobby_id || player_id <= 0) {
+    result.error_msg = strdup("Parametri non validi");
+    return result;
+  }
+
+  char *db_result = leaveLobby(lobby_id, player_id);
+  if (!db_result) {
+    result.error_msg = strdup("Errore interno server");
+    return result;
+  }
+
+  // Verifica se il risultato indica un errore
+  if (strstr(db_result, "\"result\":false") != NULL) {
+    result.error_msg = db_result;
+    return result;
+  }
+
+  // Controlla se la lobby è stata eliminata
+  result.lobby_deleted = (strstr(db_result, "\"lobbyDeleted\":true") != NULL);
+  result.success = true;
+  free(db_result);
+  return result;
 }
+
 void db_on_lobby_full(const char *lobby_id, int players_count) {
   printf("[DB] lobby FULL id=%s players=%d\n", lobby_id, players_count);
 }
