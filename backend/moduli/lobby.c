@@ -47,7 +47,7 @@ char* getAllLobbies() {
   const char *host = getenv("DB_HOST");
   if (!host) host = "db";
 
-  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
+  DBConnection *conn = dbConnectWithOptions(host, "deltalabtsf", "postgres", "admin", 30);
   if (!conn || !dbIsConnected(conn)) {
     if (conn) dbDisconnect(conn);
     return strdup("{\"result\":false,\"message\":\"Connessione al database fallita\",\"content\":null}");
@@ -146,7 +146,7 @@ char* getLobbyById(const char* id) {
   const char *host = getenv("DB_HOST");
   if (!host) host = "db";
 
-  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
+  DBConnection *conn = dbConnectWithOptions(host, "deltalabtsf", "postgres", "admin", 30);
   if (!conn || !dbIsConnected(conn)) {
     if (conn) dbDisconnect(conn);
     return strdup("{\"result\":false,\"message\":\"Errore connessione database\",\"content\":null}");
@@ -217,7 +217,7 @@ Lobby* createLobby(int idCreator, bool isPrivate, LobbyRotation rotation) {
   const char *host = getenv("DB_HOST");
   if (!host) host = "db";
 
-  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
+  DBConnection *conn = dbConnectWithOptions(host, "deltalabtsf", "postgres", "admin", 30);
   if (!conn || !dbIsConnected(conn)) {
     fprintf(stderr, "Impossibile connettersi al database\n");
     if (conn) dbDisconnect(conn);
@@ -276,7 +276,7 @@ Lobby* createLobby(int idCreator, bool isPrivate, LobbyRotation rotation) {
   const char *rotationStr = (rotation == CLOCKWISE) ? "orario" : "antiorario";
   const char *isPrivateStr = isPrivate ? "t" : "f";  // Postgres boolean
   const char *statusStr = "waiting";
-  const char *connectedUsers = "1"; // creatore è il primo connesso
+  const char *connectedUsers = "0"; // creatore è il primo connesso
 
   // Converti idCreator da int a stringa
   snprintf(idCreatorStr, sizeof(idCreatorStr), "%d", idCreator);
@@ -444,7 +444,7 @@ char* deleteLobby(const char* lobbyId, int creatorId) {
   const char *host = getenv("DB_HOST");
   if (!host) host = "db";
 
-  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
+  DBConnection *conn = dbConnectWithOptions(host, "deltalabtsf", "postgres", "admin", 30);
   if (!conn || !dbIsConnected(conn)) {
     if (conn) dbDisconnect(conn);
     return strdup("{\"result\":false,\"message\":\"Connessione al database fallita\",\"content\":null}");
@@ -512,7 +512,7 @@ char* getPlayerInfoById(int playerId) {
   const char *host = getenv("DB_HOST");
   if (!host) host = "db";
 
-  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
+  DBConnection *conn = dbConnectWithOptions(host, "deltalabtsf", "postgres", "admin", 30);
   if (!conn || !dbIsConnected(conn)) {
     if (conn) dbDisconnect(conn);
     return strdup("{\"result\":false,\"message\":\"Connessione al database fallita\",\"content\":null}");
@@ -577,7 +577,7 @@ char* joinLobby(const char* lobbyId, int playerId) {
   const char *host = getenv("DB_HOST");
   if (!host) host = "db";
 
-  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
+  DBConnection *conn = dbConnectWithOptions(host, "deltalabtsf", "postgres", "admin", 30);
   if (!conn || !dbIsConnected(conn)) {
     if (conn) dbDisconnect(conn);
     return strdup("{\"result\":false,\"message\":\"Connessione al database fallita\",\"content\":null}");
@@ -694,14 +694,6 @@ char* joinLobby(const char* lobbyId, int playerId) {
   }
   PQclear(insert_res);
 
-  // Aggiorna il contatore nella tabella lobby se il giocatore Ã¨ attivo
-  if (strcmp(new_status, "active") == 0) {
-    const char *update_lobby_sql = "UPDATE lobby SET utenti_connessi = utenti_connessi + 1 WHERE id = $1";
-
-    PGresult *update_res = dbExecutePrepared(conn, update_lobby_sql, 1, lobby_params);
-    if (update_res) PQclear(update_res);
-  }
-
   if (!dbCommitTransaction(conn)) {
     dbDisconnect(conn);
     return strdup("{\"result\":false,\"message\":\"Errore commit transazione\",\"content\":null}");
@@ -731,7 +723,7 @@ char* getLobbyPlayers(const char* lobbyId) {
   const char *host = getenv("DB_HOST");
   if (!host) host = "db";
 
-  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
+  DBConnection *conn = dbConnectWithOptions(host, "deltalabtsf", "postgres", "admin", 30);
   if (!conn || !dbIsConnected(conn)) {
     if (conn) dbDisconnect(conn);
     return strdup("{\"result\":false,\"message\":\"Connessione al database fallita\",\"content\":null}");
@@ -831,7 +823,7 @@ char* leaveLobby(const char* lobbyId, int playerId) {
   const char *host = getenv("DB_HOST");
   if (!host) host = "db";
 
-  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
+  DBConnection *conn = dbConnectWithOptions(host, "deltalabtsf", "postgres", "admin", 30);
   if (!conn || !dbIsConnected(conn)) {
     if (conn) dbDisconnect(conn);
     return strdup("{\"result\":false,\"message\":\"Connessione al database fallita\",\"content\":null}");
