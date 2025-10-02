@@ -1,7 +1,5 @@
 package detalab.Controller;
 
-import java.util.ResourceBundle;
-import java.net.URL;
 import java.io.IOException;
 import java.util.List;
 import java.util.ArrayList;
@@ -16,17 +14,10 @@ import org.json.*;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.Button;
-import javafx.scene.control.TableView;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.Alert.AlertType;
-import javafx.scene.control.Alert;
-import javafx.fxml.FXML;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.CheckBox;
-import javafx.event.ActionEvent;
 import javafx.stage.Stage;
-import javafx.scene.Node;
 
 
 public class CreateLobbyDialogController extends GeneralPageController {

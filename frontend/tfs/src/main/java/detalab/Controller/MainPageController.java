@@ -1,9 +1,6 @@
 package detalab.Controller;
 
-import java.util.ResourceBundle;
-import java.net.URL;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.util.List;
 import java.util.Random;
 import java.util.ArrayList;
@@ -24,7 +21,6 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.Alert.AlertType;
-import javafx.scene.control.Alert;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -168,11 +164,6 @@ public class MainPageController extends GeneralPageController {
     @FXML
     private void exit() throws IOException {
         LoggedUser.cleanUserSession();
-        // Stage stage = (Stage) mainPage.getScene().getWindow();
-        // stage.setWidth(800);
-        // stage.setHeight(500);
-        // stage.centerOnScreen();
-        // App.setRoot("login");
         Scene scene = mainPage.getScene();
         Stage stage = (Stage) scene.getWindow();
         // Imposta le dimensioni della Scene

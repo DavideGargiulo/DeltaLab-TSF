@@ -1,12 +1,6 @@
 package detalab.Controller;
 
 import java.io.IOException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.ResourceBundle;
-import java.util.List;
-import java.util.Arrays;
-import java.net.HttpURLConnection;
 import detalab.DTO.Response;
 import detalab.DTO.LanguageHelper;
 import detalab.App;
@@ -14,7 +8,6 @@ import org.json.*;
 
 import javafx.scene.control.Alert.AlertType;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;

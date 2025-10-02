@@ -5,7 +5,6 @@ import java.io.IOException;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import detalab.DTO.CurrentLobby;
-import detalab.DTO.Lobby;
 import detalab.App;
 
 public class GamePageController {

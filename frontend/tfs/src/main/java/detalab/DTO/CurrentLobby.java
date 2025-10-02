@@ -2,9 +2,6 @@ package detalab.DTO;
 
 import java.util.ArrayList;
 
-import detalab.DTO.User;
-import detalab.DTO.Lobby;
-
 public class CurrentLobby extends Lobby {
 
   ArrayList<User> playingUsers;

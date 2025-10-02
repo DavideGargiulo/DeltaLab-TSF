@@ -1,7 +1,5 @@
 package detalab.DTO;
 
-import detalab.DTO.User;
-
 public class LoggedUser extends User {
 
   //Instance

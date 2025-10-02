@@ -72,7 +72,7 @@
                               <Font size="14.0" />
                            </font>
                         </Label>
-                        <TextField fx:id="usernamePassword" maxWidth="-Infinity" minWidth="-Infinity" prefHeight="43.0" prefWidth="160.0" promptText="choose a username" />
+                        <TextField fx:id="usernameField" maxWidth="-Infinity" minWidth="-Infinity" prefHeight="43.0" prefWidth="160.0" promptText="choose a username" />
                      </children>
                   </VBox>
                   <VBox alignment="CENTER" prefHeight="200.0" spacing="10.0">

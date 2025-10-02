@@ -1,11 +1,6 @@
 package detalab.Controller;
 
 import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.URL;
 import detalab.DTO.Response;
 import detalab.DTO.User;
 import detalab.DTO.LoggedUser;
@@ -19,7 +14,6 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
 
 
 public class LoginPageController extends GeneralPageController {

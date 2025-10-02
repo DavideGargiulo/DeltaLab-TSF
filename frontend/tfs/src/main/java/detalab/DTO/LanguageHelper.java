@@ -8,7 +8,6 @@ import java.net.HttpURLConnection;
 import java.io.OutputStream;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import detalab.DTO.LoggedUser;
 import java.io.IOException;
 
 public class LanguageHelper extends GeneralPageController{
