@@ -12,6 +12,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import detalab.DTO.CurrentLobby;
 import detalab.DTO.LanguageHelper;
+import detalab.DTO.LobbyWebSocketClient;
 import detalab.DTO.LoggedUser;
 import detalab.App;
 
@@ -90,8 +91,27 @@ public class GamePageController extends GeneralPageController {
     Label username7;
 
     @FXML
+    private void submit() {
+        String inputText = inputField.getText().trim();
+
+        try {
+            if (inputText.isEmpty()) {
+                throw new IllegalArgumentException("Input text cannot be empty.");
+            }
+            client.sendChatMessage(inputText).get();
+            inputField.clear();
+        } catch (Exception e) {
+            showAlert(AlertType.ERROR, "Invalid Input", "Please enter a valid text.", e.getMessage());
+            inputField.clear();
+            return;
+        }
+
+    }
+
+    @FXML
     private void exit() throws IOException {
         CurrentLobby.cleanLobby();
+        client.shutdown();
         App.setRoot("main");
     }
 
@@ -153,14 +173,34 @@ public class GamePageController extends GeneralPageController {
         phraseLabel.setVisible(false);
     }
 
+    CurrentLobby lobby = CurrentLobby.getInstance();
+    LoggedUser user = LoggedUser.getInstance();
+
+    LobbyWebSocketClient client;
+
+    public GamePageController() {
+        try {
+            client = new LobbyWebSocketClient("localhost", 8080, lobby.getLobbyID());
+        } catch (Exception e) {
+            e.printStackTrace();
+            client = null;
+        }
+    }
+
     @FXML
     public void initialize() {
-
-        System.out.println(CurrentLobby.getInstance().getLobbyID());
 
         translateUI();
 
         setItemsNotVisible();
+
+        try {
+            client.connectBlocking();
+            client.joinLobby(String.valueOf(user.getId()), user.getUsername(), lobby.getLobbyID()).get();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
 
     }
 }

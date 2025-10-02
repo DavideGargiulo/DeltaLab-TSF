@@ -130,7 +130,7 @@
     <bottom>
         <HBox alignment="CENTER" prefHeight="70" spacing="15" styleClass="footer">
             <TextField fx:id="inputField" prefWidth="600" promptText="input text" styleClass="text-field" />
-            <Button fx:id="submitButton" prefHeight="45" prefWidth="100" styleClass="action-button" text="Submit" />
+            <Button fx:id="submitButton" onAction="#submit" prefHeight="45" prefWidth="100" styleClass="action-button" text="Submit" />
         </HBox>
     </bottom>
 </BorderPane>

@@ -108,5 +108,6 @@
   "ltex.checkFrequency": "save",
   "ltex.completionEnabled": true,
   "latex-workshop.latex.autoBuild.run": "onSave",
-  "files.trimTrailingWhitespace": true
+  "files.trimTrailingWhitespace": true,
+  "java.configuration.updateBuildConfiguration": "automatic"
 }
