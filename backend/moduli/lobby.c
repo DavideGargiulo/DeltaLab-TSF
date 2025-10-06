@@ -9,29 +9,144 @@
 #include <time.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <errno.h>
 #include "dbConnection.h"
 #include "lobby.h"
 
 #define MIN_PLAYERS 4
 #define MAX_PLAYERS 8
+#define LOBBY_ID_LENGTH 6
+#define MAX_ID_GENERATION_ATTEMPTS 10
 
-static void generateLobbyId(char *buffer) {
-  const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  const int charsetSize = sizeof(charset) - 1;
-  srand((unsigned int)time(NULL) ^ getpid());
+#define JSON_BUFFER_SMALL 512
+#define JSON_BUFFER_MEDIUM 1024
+#define JSON_BUFFER_LARGE 8192
 
-  for (int i = 0; i < 6; i++) {
-    int key = rand() % charsetSize;
-    buffer[i] = charset[key];
+#define DEFAULT_DB_HOST "db"
+#define DEFAULT_DB_NAME "deltalabtsf"
+#define DEFAULT_DB_USER "postgres"
+#define DEFAULT_DB_PASS "admin"
+#define DB_CONNECTION_TIMEOUT 30
+#define DB_QUERY_TIMEOUT 10
+
+#define STATUS_WAITING "waiting"
+#define STATUS_STARTED "started"
+#define STATUS_ACTIVE "active"
+
+#define ROTATION_CLOCKWISE_DB "orario"
+#define ROTATION_COUNTERCLOCKWISE_DB "antiorario"
+#define ROTATION_CLOCKWISE_JSON "clockwise"
+#define ROTATION_COUNTERCLOCKWISE_JSON "counterclockwise"
+
+#define ROTATION_CLOCKWISE_DB "orario"
+#define ROTATION_COUNTERCLOCKWISE_DB "antiorario"
+#define ROTATION_CLOCKWISE_JSON "clockwise"
+#define ROTATION_COUNTERCLOCKWISE_JSON "counterclockwise"
+
+static char* createJsonError(const char* message) {
+  if (!message) {
+    message = "Errore sconosciuto";
   }
-  buffer[6] = '\0';
+
+  size_t bufferSize = strlen(message) + 128;
+  char* json = malloc(bufferSize);
+  if (!json) {
+    return strdup("{\"result\":false,\"message\":\"Errore nell'allocazione di memoria\",\"content\":null}");
+  }
+
+  snprintf(json, bufferSize, "{\"result\":false,\"message\":\"%.100s\",\"content\":null}", message);
+  return json;
 }
 
-static bool lobbyIdExists(DBConnection *conn, const char *id) {
-  const char *sql = "SELECT 1 FROM lobby WHERE id = $1 LIMIT 1";
-  const char *paramValues[1] = { id };
+static char* createJsonSuccess(const char* message, const char* content) {
+  size_t bufferSize = JSON_BUFFER_MEDIUM;
+  if (content) {
+    bufferSize += strlen(content);
+  }
 
-  PGresult *res = dbExecutePrepared(conn, sql, 1, paramValues);
+  char* json = malloc(bufferSize);
+  if (!json) {
+    return createJsonError("Errore nell'allocazione di memoria");
+  }
+
+  if (content) {
+    snprintf(json, bufferSize, "{\"result\":true,\"message\":\"%.100s\",\"content\":%s}", message, content);
+  } else {
+    snprintf(json, bufferSize, "{\"result\":true,\"message\":\"%.100s\",\"content\":null}", message);
+  }
+
+  return json;
+}
+
+static bool isValidLobbyId(const char* id) {
+  if (!id) return false;
+
+  size_t len = strlen(id);
+  if (len != LOBBY_ID_LENGTH) return false;
+
+  for (size_t i = 0; i < len; i++) {
+    if (!isalnum((unsigned char)id[i])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+static bool isValidPlayerId(int playerId) {
+  return playerId > 0;
+}
+
+static const char* rotationDbToJson(const char* dbRotation) {
+  if (!dbRotation) {
+    return ROTATION_CLOCKWISE_JSON;
+  }
+
+  if (strcasecmp(dbRotation, ROTATION_COUNTERCLOCKWISE_DB) == 0 ||
+      strcasecmp(dbRotation, ROTATION_COUNTERCLOCKWISE_JSON) == 0) {
+    return ROTATION_COUNTERCLOCKWISE_JSON;
+  }
+
+  return ROTATION_CLOCKWISE_JSON;
+}
+
+static const char* rotationEnumToDb(LobbyRotation rotation) {
+  return (rotation == CLOCKWISE) ? ROTATION_CLOCKWISE_DB : ROTATION_COUNTERCLOCKWISE_DB;
+}
+
+static void generateLobbyId(char* buffer) {
+  static const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  static const int charsetSize = sizeof(charset) - 1;
+
+  static bool seeded = false;
+  if (!seeded) {
+    srand((unsigned int)time(NULL) ^ (unsigned int)getpid());
+    seeded = true;
+  }
+
+  for (int i = 0; i < LOBBY_ID_LENGTH; i++) {
+    buffer[i] = charset[rand() % charsetSize];
+  }
+  buffer[LOBBY_ID_LENGTH] = '\0';
+}
+
+static DBConnection* connectToDatabase(void) {
+  DBConnection* conn = dbConnectWithOptions(DEFAULT_DB_HOST, DEFAULT_DB_NAME, DEFAULT_DB_USER, DEFAULT_DB_PASS, DB_CONNECTION_TIMEOUT);
+  if (!conn || !dbIsConnected(conn)) {
+    if (conn) {
+      dbDisconnect(conn);
+    }
+    return NULL;
+  }
+
+  return conn;
+}
+
+static bool lobbyIdExists(DBConnection* conn, const char* id) {
+  const char* sql = "SELECT 1 FROM lobby WHERE id = $1 LIMIT 1";
+  const char* paramValues[1] = { id };
+
+  PGresult* res = dbExecutePrepared(conn, sql, 1, paramValues);
   if (!res) {
     return false;
   }
@@ -42,80 +157,81 @@ static bool lobbyIdExists(DBConnection *conn, const char *id) {
   return nrows > 0;
 }
 
-// Nuova funzione che restituisce JSON invece di inviarlo
-char* getAllLobbies() {
-  const char *host = getenv("DB_HOST");
-  if (!host) host = "db";
+static const char* getSafeValue(PGresult* res, int row, int col, const char* defaultValue) {
+  if (PQgetisnull(res, row, col)) {
+    return defaultValue;
+  }
+  return PQgetvalue(res, row, col);
+}
 
-  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
-  if (!conn || !dbIsConnected(conn)) {
-    if (conn) dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Connessione al database fallita\",\"content\":null}");
+static bool stringToBool(const char* str) {
+  if (!str) return false;
+  return (str[0] == 't' || str[0] == 'T' || strcmp(str, "true") == 0);
+}
+
+char* getAllLobbies() {
+  DBConnection* conn = connectToDatabase();
+  if (!conn) {
+    return createJsonError("Connessione al database fallita");
   }
 
-  // Modifica la query per escludere le lobby private
-  const char *sql = "SELECT * FROM lobby WHERE is_private = false OR is_private IS NULL";
-  PGresult *res = dbExecuteQueryWithTimeout(conn, sql, 10);
+  const char* sql = "SELECT id, utenti_connessi, rotazione, id_accountcreatore, "
+                    "is_private, status FROM lobby "
+                    "WHERE is_private = false OR is_private IS NULL";
+
+  PGresult* res = dbExecuteQueryWithTimeout(conn, sql, DB_QUERY_TIMEOUT);
   if (!res) {
     dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Errore nell'esecuzione della query\",\"content\":null}");
+    return createJsonError("Errore nell'esecuzione della query");
   }
 
   int nrows = PQntuples(res);
 
-  // Risolvi indici colonne basati sulla struttura reale
-  int colId       = PQfnumber(res, "id");
-  int colUsers    = PQfnumber(res, "utenti_connessi");
+  /* Get column indices */
+  int colId = PQfnumber(res, "id");
+  int colUsers = PQfnumber(res, "utenti_connessi");
   int colRotation = PQfnumber(res, "rotazione");
-  int colCreator  = PQfnumber(res, "id_accountcreatore");
-  int colPrivate  = PQfnumber(res, "is_private");
-  int colStatus  = PQfnumber(res, "status");
+  int colCreator = PQfnumber(res, "id_accountcreatore");
+  int colPrivate = PQfnumber(res, "is_private");
+  int colStatus = PQfnumber(res, "status");
 
-  // Alloca buffer più grande per la risposta JSON
-  char *jsonResponse = malloc(8192);
+  /* Allocate buffer for JSON response */
+  char* jsonResponse = malloc(JSON_BUFFER_LARGE);
   if (!jsonResponse) {
     PQclear(res);
     dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Errore memoria\",\"content\":null}");
+    return createJsonError("Errore nell'allocazione di memoria");
   }
 
-  // Inizia la risposta JSON
   strcpy(jsonResponse, "{\"result\":true,\"message\":\"Lobby pubbliche trovate\",\"content\":[");
 
-  char tempBuffer[512];
+  char tempBuffer[JSON_BUFFER_SMALL];
   bool firstLobby = true;
 
-  for (int r = 0; r < nrows; ++r) {
+  for (int r = 0; r < nrows; r++) {
     if (!firstLobby) {
       strcat(jsonResponse, ",");
     }
     firstLobby = false;
 
-    // Estrai i valori con controllo null
-    const char *id = PQgetisnull(res, r, colId) ? "" : PQgetvalue(res, r, colId);
-    const char *users = PQgetisnull(res, r, colUsers) ? "0" : PQgetvalue(res, r, colUsers);
-    const char *rotation = PQgetisnull(res, r, colRotation) ? "orario" : PQgetvalue(res, r, colRotation);
-    const char *creator = PQgetisnull(res, r, colCreator) ? "" : PQgetvalue(res, r, colCreator);
-    const char *isPrivate = PQgetisnull(res, r, colPrivate) ? "f" : PQgetvalue(res, r, colPrivate);
-    const char *status = PQgetisnull(res, r, colStatus) ? "waiting" : PQgetvalue(res, r, colStatus);
+    const char* id = getSafeValue(res, r, colId, "");
+    const char* users = getSafeValue(res, r, colUsers, "0");
+    const char* rotation = getSafeValue(res, r, colRotation, ROTATION_CLOCKWISE_DB);
+    const char* creator = getSafeValue(res, r, colCreator, "");
+    const char* isPrivate = getSafeValue(res, r, colPrivate, "f");
+    const char* status = getSafeValue(res, r, colStatus, STATUS_WAITING);
 
-    // Converti rotation per la risposta JSON
-    const char *rotation_json = "clockwise";
-    if (strcasecmp(rotation, "antiorario") == 0 || strcasecmp(rotation, "counterclockwise") == 0) {
-      rotation_json = "counterclockwise";
-    }
+    const char* rotationJson = rotationDbToJson(rotation);
+    bool isPrivateBool = stringToBool(isPrivate);
 
-    // Costruisci l'oggetto JSON per ogni lobby
     snprintf(tempBuffer, sizeof(tempBuffer),
               "{\"id\":\"%s\",\"utentiConnessi\":%s,\"rotation\":\"%s\","
               "\"creator\":\"%s\",\"isPrivate\":%s,\"status\":\"%s\"}",
-              id, users, rotation_json, creator,
-              (isPrivate[0] == 't') ? "true" : "false",
-              status);
+              id, users, rotationJson, creator,
+              isPrivateBool ? "true" : "false", status);
 
-    // Controlla se abbiamo spazio sufficiente
-    if (strlen(jsonResponse) + strlen(tempBuffer) + 10 >= 8192) {
-      // Buffer troppo piccolo, interrompi (potresti anche riallocare)
+    /* Check buffer capacity */
+    if (strlen(jsonResponse) + strlen(tempBuffer) + 10 >= JSON_BUFFER_LARGE) {
       break;
     }
 
@@ -130,75 +246,62 @@ char* getAllLobbies() {
   return jsonResponse;
 }
 
-// Nuova funzione che restituisce JSON invece di inviarlo
 char* getLobbyById(const char* id) {
-  if (!id || strlen(id) == 0 || strlen(id) > 7) {
-    return strdup("{\"result\":false,\"message\":\"ID lobby non valido\",\"content\":null}");
+  if (!isValidLobbyId(id)) {
+    return createJsonError("Invalid lobby ID");
   }
 
-  // Validazione caratteri
-  for (const char *p = id; *p; p++) {
-    if (!isalnum(*p)) {
-      return strdup("{\"result\":false,\"message\":\"ID lobby contiene caratteri non validi\",\"content\":null}");
-    }
+  DBConnection* conn = connectToDatabase();
+  if (!conn) {
+    return createJsonError("Connessione al database fallita");
   }
 
-  const char *host = getenv("DB_HOST");
-  if (!host) host = "db";
+  const char* sql = "SELECT id, utenti_connessi, rotazione, id_accountcreatore, is_private, status FROM lobby WHERE id = $1";
+  const char* paramValues[1] = { id };
 
-  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
-  if (!conn || !dbIsConnected(conn)) {
-    if (conn) dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Errore connessione database\",\"content\":null}");
-  }
-
-  const char *sql = "SELECT * FROM lobby WHERE id = $1";
-  const char *paramValues[1] = { id };
-
-  PGresult *res = dbExecutePrepared(conn, sql, 1, paramValues);
+  PGresult* res = dbExecutePrepared(conn, sql, 1, paramValues);
   if (!res) {
     dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Errore query database\",\"content\":null}");
+    return createJsonError("Errore nella query del database");
   }
 
-  int nrows = PQntuples(res);
-  if (nrows == 0) {
+  if (PQntuples(res) == 0) {
     PQclear(res);
     dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Lobby non trovata\",\"content\":null}");
+    return createJsonError("Lobby non trovata");
   }
 
-  // Estrai i dati dalla query (come nella funzione originale)
+  /* Get column indices */
   int colId = PQfnumber(res, "id");
   int colUsers = PQfnumber(res, "utenti_connessi");
   int colRotation = PQfnumber(res, "rotazione");
   int colCreator = PQfnumber(res, "id_accountcreatore");
   int colPrivate = PQfnumber(res, "is_private");
-  int colStatus= PQfnumber(res, "status");
+  int colStatus = PQfnumber(res, "status");
 
-  const char *lobby_id = PQgetisnull(res, 0, colId) ? "" : PQgetvalue(res, 0, colId);
-  const char *users = PQgetisnull(res, 0, colUsers) ? "0" : PQgetvalue(res, 0, colUsers);
-  const char *rotation = PQgetisnull(res, 0, colRotation) ? "clockwise" : PQgetvalue(res, 0, colRotation);
-  const char *creator = PQgetisnull(res, 0, colCreator) ? "" : PQgetvalue(res, 0, colCreator);
-  const char *isPrivate = PQgetisnull(res, 0, colPrivate) ? "false" : PQgetvalue(res, 0, colPrivate);
-  const char *status = PQgetisnull(res, 0, colStatus) ? "waiting" : PQgetvalue(res, 0, colStatus);
+  const char* lobbyId = getSafeValue(res, 0, colId, "");
+  const char* users = getSafeValue(res, 0, colUsers, "0");
+  const char* rotation = getSafeValue(res, 0, colRotation, ROTATION_CLOCKWISE_DB);
+  const char* creator = getSafeValue(res, 0, colCreator, "");
+  const char* isPrivate = getSafeValue(res, 0, colPrivate, "f");
+  const char* status = getSafeValue(res, 0, colStatus, STATUS_WAITING);
 
-  // Alloca buffer per la risposta JSON
-  char *jsonResponse = malloc(1024);
+  char* jsonResponse = malloc(JSON_BUFFER_MEDIUM);
   if (!jsonResponse) {
     PQclear(res);
     dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Errore memoria\",\"content\":null}");
+    return createJsonError("Errore nell'allocazione di memoria");
   }
 
-  // Costruisci la risposta JSON
-  snprintf(jsonResponse, 1024,
-    "{\"result\":true,\"message\":\"Lobby trovata\",\"content\":{"
-    "\"id\":\"%s\",\"utentiConnessi\":%s,\"rotation\":\"%s\","
-    "\"creator\":\"%s\",\"isPrivate\":%s,\"status\":\"%s\"}}",
-    lobby_id, users, rotation, creator,
-    (strcmp(isPrivate, "t") == 0 || strcmp(isPrivate, "true") == 0) ? "true" : "false",
-    status);
+  const char* rotationJson = rotationDbToJson(rotation);
+  bool isPrivateBool = stringToBool(isPrivate);
+
+  snprintf(jsonResponse, JSON_BUFFER_MEDIUM,
+            "{\"result\":true,\"message\":\"Lobby trovata\",\"content\":{"
+            "\"id\":\"%s\",\"utentiConnessi\":%s,\"rotation\":\"%s\","
+            "\"creator\":\"%s\",\"isPrivate\":%s,\"status\":\"%s\"}}",
+            lobbyId, users, rotationJson, creator,
+            isPrivateBool ? "true" : "false", status);
 
   PQclear(res);
   dbDisconnect(conn);
@@ -206,607 +309,144 @@ char* getLobbyById(const char* id) {
   return jsonResponse;
 }
 
-Lobby* createLobby(int idCreator, bool isPrivate, LobbyRotation rotation) {
-  // Validazione input
-  if (idCreator <= 0) {
-    fprintf(stderr, "ID creator non valido: %d\n", idCreator);
-    return NULL;
-  }
-
-  // Connessione al database
-  const char *host = getenv("DB_HOST");
-  if (!host) host = "db";
-
-  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
-  if (!conn || !dbIsConnected(conn)) {
-    fprintf(stderr, "Impossibile connettersi al database\n");
-    if (conn) dbDisconnect(conn);
-    return NULL;
-  }
-
-  const char *user_check_sql = "SELECT 1 FROM account WHERE id = $1 LIMIT 1";
-  char idCreatorStr[16];
-  snprintf(idCreatorStr, sizeof(idCreatorStr), "%d", idCreator);
-  const char *user_params[1] = { idCreatorStr };
-
-  PGresult *user_res = dbExecutePrepared(conn, user_check_sql, 1, user_params);
-  if (!user_res) {
-    fprintf(stderr, "Errore nella verifica dell'utente\n");
-    dbDisconnect(conn);
-    return NULL;
-  }
-
-  int user_exists = PQntuples(user_res);
-  PQclear(user_res);
-
-  if (user_exists == 0) {
-    fprintf(stderr, "Utente con ID %d non trovato\n", idCreator);
-    dbDisconnect(conn);
-    return NULL;
-  }
-
-  // Genera ID univoco per la lobby
-  char lobbyId[7];
-  int attempts = 0;
-  const int MAX_ATTEMPTS = 10;
-
-  do {
-    generateLobbyId(lobbyId);
-    attempts++;
-
-    if (attempts >= MAX_ATTEMPTS) {
-      fprintf(stderr, "Impossibile generare ID univoco dopo %d tentativi\n", MAX_ATTEMPTS);
-      dbDisconnect(conn);
-      return NULL;
-    }
-  } while (lobbyIdExists(conn, lobbyId));
-
-  // Inizia transazione
-  if (!dbBeginTransaction(conn)) {
-    fprintf(stderr, "Impossibile iniziare transazione\n");
-    dbDisconnect(conn);
-    return NULL;
-  }
-
-  // Inserisci nel database
-  const char *sql =
-      "INSERT INTO lobby (id, utenti_connessi, rotazione, id_accountcreatore, is_private, status) "
-      "VALUES ($1, $2, $3, $4, $5, $6)";
-
-  const char *rotationStr = (rotation == CLOCKWISE) ? "orario" : "antiorario";
-  const char *isPrivateStr = isPrivate ? "t" : "f";  // Postgres boolean
-  const char *statusStr = "waiting";
-  const char *connectedUsers = "0"; // creatore è il primo connesso
-
-  // Converti idCreator da int a stringa
-  snprintf(idCreatorStr, sizeof(idCreatorStr), "%d", idCreator);
-
-  const char *paramValues[6] = {
-    lobbyId,
-    connectedUsers,
-    rotationStr,
-    idCreatorStr,
-    isPrivateStr,
-    statusStr
-  };
-
-  PGresult *res = dbExecutePrepared(conn, sql, 6, paramValues);
-
-  if (!res) {
-    fprintf(stderr, "Errore nell'esecuzione di dbExecutePrepared: %s\n", dbGetErrorMessage(conn));
-    dbRollbackTransaction(conn);
-    dbDisconnect(conn);
-    return NULL;
-  }
-
-  PQclear(res);
-
-  // Commit transazione
-  if (!dbCommitTransaction(conn)) {
-    fprintf(stderr, "Errore nel commit della transazione\n");
-    dbDisconnect(conn);
-    return NULL;
-  }
-
-  dbDisconnect(conn);
-
-  // Crea struttura Lobby in memoria
-  Lobby *lobby = malloc(sizeof(Lobby));
-  if (!lobby) {
-    fprintf(stderr, "Errore allocazione memoria per Lobby\n");
-    return NULL;
-  }
-
-  // Inizializza i campi
-  strncpy(lobby->id, lobbyId, sizeof(lobby->id) - 1);
-  lobby->id[sizeof(lobby->id) - 1] = '\0';
-
-  lobby->idCreator = idCreator;  // Assegnazione diretta di int, NON strncpy
-
-  lobby->rotation = rotation;
-  lobby->isPrivate = isPrivate;
-  lobby->status = WAITING;
-
-  return lobby;
-}
-
-char* createLobbyEndpoint(const char* requestBody) {
-  if (!requestBody) {
-    return strdup("{\"result\":false,\"message\":\"Request body mancante\",\"content\":null}");
-  }
-
-  int idCreator = 0;
-  bool isPrivate = false;
-  LobbyRotation rotation = CLOCKWISE;
-
-  // Crea una copia del request body per il parsing
-  char *copy = strdup(requestBody);
-  if (!copy) {
-    return strdup("{\"result\":false,\"message\":\"Errore di memoria\",\"content\":null}");
-  }
-
-  // Rimuovi spazi e newlines per semplificare il parsing
-  char *p = copy;
-  while (*p) {
-    if (*p == ' ' || *p == '\n' || *p == '\t' || *p == '\r') {
-      memmove(p, p + 1, strlen(p));
-    } else {
-      p++;
-    }
-  }
-
-  // Cerca idCreator come numero (senza virgolette)
-  char *idStart = strstr(copy, "\"idCreator\":");
-  if (idStart) {
-    idStart += strlen("\"idCreator\":");
-    idCreator = atoi(idStart);  // Converte direttamente a intero
-  }
-
-  // Cerca isPrivate
-  char *privateStart = strstr(copy, "\"isPrivate\":");
-  if (privateStart) {
-    privateStart += strlen("\"isPrivate\":");
-    if (strncmp(privateStart, "true", 4) == 0) {
-      isPrivate = true;
-    } else if (strncmp(privateStart, "false", 5) == 0) {
-      isPrivate = false;
-    }
-  }
-
-  // Cerca rotation
-  char *rotationStart = strstr(copy, "\"rotation\":\"");
-  if (rotationStart) {
-    rotationStart += strlen("\"rotation\":\"");
-    char *rotationEnd = strchr(rotationStart, '"');
-    if (rotationEnd) {
-      size_t len = rotationEnd - rotationStart;
-      if (strncmp(rotationStart, "counterclockwise", len) == 0 ||
-        strncmp(rotationStart, "antiorario", len) == 0) {
-        rotation = COUNTERCLOCKWISE;
-      } else {
-        rotation = CLOCKWISE;
-      }
-    }
-  }
-
-  free(copy);
-
-  // Validazione
-  if (idCreator <= 0) {
-    return strdup("{\"result\":false,\"message\":\"ID creator deve essere un numero positivo\",\"content\":null}");
-  }
-
-  // Crea la lobby
-  Lobby *lobby = createLobby(idCreator, isPrivate, rotation);
-  if (!lobby) {
-    return strdup("{\"result\":false,\"message\":\"Impossibile creare la lobby\",\"content\":null}");
-  }
-
-  // Costruisci risposta JSON di successo
-  char *jsonResponse = malloc(1024);
-  if (!jsonResponse) {
-    return strdup("{\"result\":false,\"message\":\"Errore di memoria\",\"content\":null}");
-  }
-
-  snprintf(jsonResponse, 1024,
-            "{\"result\":true,\"message\":\"Lobby creata con successo\",\"content\":{"
-              "\"id\":\"%s\","
-              "\"connectedUsers\":1,"
-              "\"rotation\":\"%s\","
-              "\"creator\":%d,"
-              "\"isPrivate\":%s,"
-              "\"status\":\"waiting\""
-            "}}",
-            lobby->id,
-            lobby->rotation == CLOCKWISE ? "clockwise" : "counterclockwise",
-            lobby->idCreator,
-            lobby->isPrivate ? "true" : "false");
-
-  return jsonResponse;
-}
-
-char* deleteLobby(const char* lobbyId, int creatorId) {
-  if (!lobbyId || strlen(lobbyId) != 6) {
-    return strdup("{\"result\":false,\"message\":\"ID lobby non valido\",\"content\":null}");
-  }
-
-  for (int i = 0; i < 6; i++) {
-    if (!isalnum(lobbyId[i])) {
-      return strdup("{\"result\":false,\"message\":\"ID contiene caratteri non validi\",\"content\":null}");
-    }
-  }
-
-  if (creatorId <= 0) {
-    return strdup("{\"result\":false,\"message\":\"ID creator non valido\",\"content\":null}");
-  }
-
-  // Connessione al database
-  const char *host = getenv("DB_HOST");
-  if (!host) host = "db";
-
-  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
-  if (!conn || !dbIsConnected(conn)) {
-    if (conn) dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Connessione al database fallita\",\"content\":null}");
-  }
-
-  // Verifica che la lobby esista e che l'utente sia il creatore
-  const char *check_sql = "SELECT id_accountcreatore FROM lobby WHERE id = $1";
-  const char *check_params[1] = { lobbyId };
-
-  PGresult *check_res = dbExecutePrepared(conn, check_sql, 1, check_params);
-  if (!check_res) {
-    dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Errore query verifica\",\"content\":null}");
-  }
-
-  int nrows = PQntuples(check_res);
-  if (nrows == 0) {
-    PQclear(check_res);
-    dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Lobby non trovata\",\"content\":null}");
-  }
-
-  // Controlla se l'utente è il creatore
-  const char *db_creator = PQgetvalue(check_res, 0, 0);
-  int db_creator_id = atoi(db_creator);
-  PQclear(check_res);
-
-  if (db_creator_id != creatorId) {
-    dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Solo il creatore può eliminare la lobby\",\"content\":null}");
-  }
-
-  // Elimina la lobby
-  const char *delete_sql = "DELETE FROM lobby WHERE id = $1 AND id_accountcreatore = $2";
-
-  char creatorIdStr[16];
-  snprintf(creatorIdStr, sizeof(creatorIdStr), "%d", creatorId);
-
-  const char *delete_params[2] = { lobbyId, creatorIdStr };
-
-  PGresult *delete_res = dbExecutePrepared(conn, delete_sql, 2, delete_params);
-  if (!delete_res) {
-    dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Errore eliminazione lobby\",\"content\":null}");
-  }
-
-  int affected_rows = atoi(PQcmdTuples(delete_res));
-  PQclear(delete_res);
-  dbDisconnect(conn);
-
-  if (affected_rows == 0) {
-    return strdup("{\"result\":false,\"message\":\"Impossibile eliminare la lobby\",\"content\":null}");
-  }
-
-  return strdup("{\"result\":true,\"message\":\"Lobby eliminata con successo\",\"content\":null}");
-}
-
-// Funzione per ottenere informazioni di un giocatore dato il suo ID
 char* getPlayerInfoById(int playerId) {
-  if (playerId <= 0) {
-    return strdup("{\"result\":false,\"message\":\"ID giocatore non valido\",\"content\":null}");
+  if (!isValidPlayerId(playerId)) {
+    return createJsonError("ID giocatore non valido");
   }
 
-  // Connessione al database
-  const char *host = getenv("DB_HOST");
-  if (!host) host = "db";
-
-  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
-  if (!conn || !dbIsConnected(conn)) {
-    if (conn) dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Connessione al database fallita\",\"content\":null}");
+  DBConnection* conn = connectToDatabase();
+  if (!conn) {
+    return createJsonError("Connessione al database fallita");
   }
 
-  // Query per ottenere informazioni del giocatore
-  const char *sql = "SELECT id, nickname, email, lingua FROM account WHERE id = $1";
+  const char* sql = "SELECT id, nickname, email, lingua FROM account WHERE id = $1";
 
   char playerIdStr[16];
   snprintf(playerIdStr, sizeof(playerIdStr), "%d", playerId);
-  const char *params[1] = { playerIdStr };
+  const char* params[1] = { playerIdStr };
 
-  PGresult *res = dbExecutePrepared(conn, sql, 1, params);
+  PGresult* res = dbExecutePrepared(conn, sql, 1, params);
   if (!res) {
     dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Errore query database\",\"content\":null}");
+    return createJsonError("Errore nella query del database");
   }
 
-  int nrows = PQntuples(res);
-  if (nrows == 0) {
+  if (PQntuples(res) == 0) {
     PQclear(res);
     dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Giocatore non trovato\",\"content\":null}");
+    return createJsonError("Giocatore non trovato");
   }
 
-  // Estrai i dati dalla query
+  /* Get column indices */
   int colId = PQfnumber(res, "id");
-  int col_nickname = PQfnumber(res, "nickname");
-  int col_email = PQfnumber(res, "email");
-  int col_lingua = PQfnumber(res, "lingua");
+  int colNickname = PQfnumber(res, "nickname");
+  int colEmail = PQfnumber(res, "email");
+  int colLingua = PQfnumber(res, "lingua");
 
-  const char *id = PQgetisnull(res, 0, colId) ? "" : PQgetvalue(res, 0, colId);
-  const char *nickname = PQgetisnull(res, 0, col_nickname) ? "" : PQgetvalue(res, 0, col_nickname);
-  const char *email = PQgetisnull(res, 0, col_email) ? "" : PQgetvalue(res, 0, col_email);
-  const char *lingua = PQgetisnull(res, 0, col_lingua) ? "it" : PQgetvalue(res, 0, col_lingua);
+  const char* id = getSafeValue(res, 0, colId, "");
+  const char* nickname = getSafeValue(res, 0, colNickname, "");
+  const char* email = getSafeValue(res, 0, colEmail, "");
+  const char* lingua = getSafeValue(res, 0, colLingua, "it");
 
-  // Alloca buffer per la risposta JSON
-  char *jsonResponse = malloc(1024);
+  char* jsonResponse = malloc(JSON_BUFFER_MEDIUM);
   if (!jsonResponse) {
     PQclear(res);
     dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Errore memoria\",\"content\":null}");
+    return createJsonError("Errore nell'allocazione di memoria");
   }
 
-  // Costruisci la risposta JSON
-  snprintf(jsonResponse, 1024,
-    "{\"result\":true,\"message\":\"Giocatore trovato\",\"content\":{"
-    "\"id\":%s,\"nickname\":\"%s\",\"email\":\"%s\",\"lingua\":\"%s\"}}",
-    id, nickname, email, lingua);
+  snprintf(jsonResponse, JSON_BUFFER_MEDIUM,
+            "{\"result\":true,\"message\":\"Giocatore trovato\",\"content\":{"
+            "\"id\":%s,\"nickname\":\"%s\",\"email\":\"%s\",\"lingua\":\"%s\"}}",
+            id, nickname, email, lingua);
 
   PQclear(res);
   dbDisconnect(conn);
 
   return jsonResponse;
-}
-
-char* joinLobby(const char* lobbyId, int playerId) {
-  if (!lobbyId || strlen(lobbyId) != 6 || playerId <= 0) {
-    return strdup("{\"result\":false,\"message\":\"Parametri non validi\",\"content\":null}");
-  }
-
-  const char *host = getenv("DB_HOST");
-  if (!host) host = "db";
-
-  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
-  if (!conn || !dbIsConnected(conn)) {
-    if (conn) dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Connessione al database fallita\",\"content\":null}");
-  }
-
-  if (!dbBeginTransaction(conn)) {
-    dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Errore transazione\",\"content\":null}");
-  }
-
-  // Verifica che la lobby esista e non sia piena
-  const char *lobby_check = "SELECT utenti_connessi, status FROM lobby WHERE id = $1";
-  const char *lobby_params[1] = { lobbyId };
-
-  PGresult *lobby_res = dbExecutePrepared(conn, lobby_check, 1, lobby_params);
-  if (!lobby_res) {
-    dbRollbackTransaction(conn);
-    dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Errore verifica lobby\",\"content\":null}");
-  }
-
-  int lobby_rows = PQntuples(lobby_res);
-  if (lobby_rows == 0) {
-    PQclear(lobby_res);
-    dbRollbackTransaction(conn);
-    dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Lobby non trovata\",\"content\":null}");
-  }
-
-  // const char *current_users_str = PQgetvalue(lobby_res, 0, 0);
-  const char *lobby_status = PQgetvalue(lobby_res, 0, 1);
-  // int current_users = atoi(current_users_str);
-  PQclear(lobby_res);
-
-  if (strcmp(lobby_status, "started") == 0) {
-    dbRollbackTransaction(conn);
-    dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Lobby giÃ  iniziata\",\"content\":null}");
-  }
-
-  // Verifica se il giocatore Ã¨ giÃ  nella lobby
-  const char *player_check = "SELECT status FROM lobby_players WHERE lobby_id = $1 AND player_id = $2";
-
-  char playerIdStr[16];
-  snprintf(playerIdStr, sizeof(playerIdStr), "%d", playerId);
-  const char *player_params[2] = { lobbyId, playerIdStr };
-
-  PGresult *player_res = dbExecutePrepared(conn, player_check, 2, player_params);
-  if (!player_res) {
-    dbRollbackTransaction(conn);
-    dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Errore verifica giocatore\",\"content\":null}");
-  }
-
-  int player_rows = PQntuples(player_res);
-  if (player_rows > 0) {
-    const char *player_status = PQgetvalue(player_res, 0, 0);
-    PQclear(player_res);
-
-    if (strcmp(player_status, "active") == 0 || strcmp(player_status, "waiting") == 0) {
-      dbRollbackTransaction(conn);
-      dbDisconnect(conn);
-      return strdup("{\"result\":false,\"message\":\"Giocatore giÃ  nella lobby\",\"content\":null}");
-    }
-  } else {
-    PQclear(player_res);
-  }
-
-  // Conta i giocatori attivi
-  const char *active_count_sql = "SELECT COUNT(*) FROM lobby_players WHERE lobby_id = $1 AND status = 'active'";
-
-  PGresult *count_res = dbExecutePrepared(conn, active_count_sql, 1, lobby_params);
-  if (!count_res) {
-    dbRollbackTransaction(conn);
-    dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Errore conteggio giocatori\",\"content\":null}");
-  }
-
-  int active_players = atoi(PQgetvalue(count_res, 0, 0));
-  PQclear(count_res);
-
-  // Determina lo status del nuovo giocatore
-  const char *new_status = (active_players < MAX_PLAYERS) ? "active" : "waiting";
-  int position = 0;
-
-  if (strcmp(new_status, "waiting") == 0) {
-    // Trova la prossima posizione in coda
-    const char *position_sql = "SELECT COALESCE(MAX(position), 0) + 1 FROM lobby_players "
-                               "WHERE lobby_id = $1 AND status = 'waiting'";
-
-    PGresult *pos_res = dbExecutePrepared(conn, position_sql, 1, lobby_params);
-    if (pos_res && PQntuples(pos_res) > 0) {
-      position = atoi(PQgetvalue(pos_res, 0, 0));
-    }
-    if (pos_res) PQclear(pos_res);
-  }
-
-  // Inserisci/aggiorna il giocatore
-  const char *insert_sql =
-      "INSERT INTO lobby_players (lobby_id, player_id, status, position) "
-      "VALUES ($1, $2, $3, $4) "
-      "ON CONFLICT (lobby_id, player_id) "
-      "DO UPDATE SET status = $3, position = $4, joined_at = CURRENT_TIMESTAMP";
-
-  char positionStr[16];
-  snprintf(positionStr, sizeof(positionStr), "%d", position);
-  const char *insert_params[4] = { lobbyId, playerIdStr, new_status, positionStr };
-
-  PGresult *insert_res = dbExecutePrepared(conn, insert_sql, 4, insert_params);
-  if (!insert_res) {
-    dbRollbackTransaction(conn);
-    dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Errore inserimento giocatore\",\"content\":null}");
-  }
-  PQclear(insert_res);
-
-  if (!dbCommitTransaction(conn)) {
-    dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Errore commit transazione\",\"content\":null}");
-  }
-
-  dbDisconnect(conn);
-
-  // Costruisci risposta JSON
-  char *response = malloc(512);
-  if (!response) {
-    return strdup("{\"result\":false,\"message\":\"Errore memoria\",\"content\":null}");
-  }
-
-  snprintf(response, 512,
-      "{\"result\":true,\"message\":\"Giocatore aggiunto con successo\",\"content\":{"
-      "\"status\":\"%s\",\"position\":%d}}",
-      new_status, position);
-
-  return response;
 }
 
 char* getLobbyPlayers(const char* lobbyId) {
-  if (!lobbyId || strlen(lobbyId) != 6) {
-    return strdup("{\"result\":false,\"message\":\"ID lobby non valido\",\"content\":null}");
+  if (!isValidLobbyId(lobbyId)) {
+    return createJsonError("Invalid lobby ID");
   }
 
-  const char *host = getenv("DB_HOST");
-  if (!host) host = "db";
-
-  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
-  if (!conn || !dbIsConnected(conn)) {
-    if (conn) dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Connessione al database fallita\",\"content\":null}");
+  DBConnection* conn = connectToDatabase();
+  if (!conn) {
+    return createJsonError("Connessione al database fallita");
   }
 
-  const char *sql =
-      "SELECT lp.player_id, lp.status, lp.position, a.nickname "
-      "FROM lobby_players lp "
-      "JOIN account a ON lp.player_id = a.id "
-      "WHERE lp.lobby_id = $1 AND lp.status IN ('active', 'waiting') "
-      "ORDER BY "
-      "  CASE WHEN lp.status = 'active' THEN 0 ELSE 1 END, "
-      "  lp.joined_at";
+  const char* sql = "SELECT lp.player_id, lp.status, lp.position, a.nickname "
+                    "FROM lobby_players lp "
+                    "JOIN account a ON lp.player_id = a.id "
+                    "WHERE lp.lobby_id = $1 AND lp.status IN ('active', 'waiting') "
+                    "ORDER BY "
+                    "  CASE WHEN lp.status = 'active' THEN 0 ELSE 1 END, "
+                    "  lp.joined_at";
 
-  const char *params[1] = { lobbyId };
-  PGresult *res = dbExecutePrepared(conn, sql, 1, params);
+  const char* params[1] = { lobbyId };
+  PGresult* res = dbExecutePrepared(conn, sql, 1, params);
 
   if (!res) {
     dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Errore query database\",\"content\":null}");
+    return createJsonError("Errore nella query del database");
   }
 
   int nrows = PQntuples(res);
 
-  // Alloca buffer per la risposta JSON
-  char *jsonResponse = malloc(4096);
+  char* jsonResponse = malloc(JSON_BUFFER_LARGE / 2);
   if (!jsonResponse) {
     PQclear(res);
     dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Errore memoria\",\"content\":null}");
+    return createJsonError("Errore nell'allocazione di memoria");
   }
 
   strcpy(jsonResponse, "{\"result\":true,\"message\":\"Giocatori trovati\",\"content\":{");
   strcat(jsonResponse, "\"activePlayers\":[");
 
   char tempBuffer[256];
-  bool first_active = true;
-  int active_count = 0;
+  bool firstActive = true;
+  int activeCount = 0;
 
-  // Prima passa: giocatori attivi
+  /* First pass: active players */
   for (int i = 0; i < nrows; i++) {
-    const char *status = PQgetvalue(res, i, 1);
-    if (strcmp(status, "active") == 0) {
-      if (!first_active) strcat(jsonResponse, ",");
-      first_active = false;
-      active_count++;
+    const char* status = PQgetvalue(res, i, 1);
+    if (strcmp(status, STATUS_ACTIVE) == 0) {
+      if (!firstActive) strcat(jsonResponse, ",");
+      firstActive = false;
+      activeCount++;
 
-      const char *player_id = PQgetvalue(res, i, 0);
-      const char *nickname = PQgetvalue(res, i, 3);
+      const char* playerId = PQgetvalue(res, i, 0);
+      const char* nickname = PQgetvalue(res, i, 3);
 
-      snprintf(tempBuffer, sizeof(tempBuffer),
-          "{\"id\":%s,\"nickname\":\"%s\",\"status\":\"active\"}",
-          player_id, nickname);
+      snprintf(tempBuffer, sizeof(tempBuffer), "{\"id\":%s,\"nickname\":\"%s\",\"status\":\"active\"}", playerId, nickname);
       strcat(jsonResponse, tempBuffer);
     }
   }
 
   strcat(jsonResponse, "],\"waitingPlayers\":[");
 
-  bool first_waiting = true;
-  int waiting_count = 0;
+  bool firstWaiting = true;
+  int waitingCount = 0;
 
-  // Seconda passa: giocatori in attesa
+  /* Second pass: waiting players */
   for (int i = 0; i < nrows; i++) {
-    const char *status = PQgetvalue(res, i, 1);
-    if (strcmp(status, "waiting") == 0) {
-      if (!first_waiting) strcat(jsonResponse, ",");
-      first_waiting = false;
-      waiting_count++;
+    const char* status = PQgetvalue(res, i, 1);
+    if (strcmp(status, STATUS_WAITING) == 0) {
+      if (!firstWaiting) strcat(jsonResponse, ",");
+      firstWaiting = false;
+      waitingCount++;
 
-      const char *player_id = PQgetvalue(res, i, 0);
-      const char *position = PQgetvalue(res, i, 2);
-      const char *nickname = PQgetvalue(res, i, 3);
+      const char* playerId = PQgetvalue(res, i, 0);
+      const char* position = PQgetvalue(res, i, 2);
+      const char* nickname = PQgetvalue(res, i, 3);
 
-      snprintf(tempBuffer, sizeof(tempBuffer),
-          "{\"id\":%s,\"nickname\":\"%s\",\"status\":\"waiting\",\"position\":%s}",
-          player_id, nickname, position);
+      snprintf(tempBuffer, sizeof(tempBuffer), "{\"id\":%s,\"nickname\":\"%s\",\"status\":\"waiting\",\"position\":%s}", playerId, nickname, position);
       strcat(jsonResponse, tempBuffer);
     }
   }
 
-  // Chiudi la risposta JSON
-  snprintf(tempBuffer, sizeof(tempBuffer), "],\"activeCount\":%d,\"waitingCount\":%d}}", active_count, waiting_count);
+  snprintf(tempBuffer, sizeof(tempBuffer), "],\"activeCount\":%d,\"waitingCount\":%d}}", activeCount, waitingCount);
   strcat(jsonResponse, tempBuffer);
 
   PQclear(res);
@@ -815,153 +455,542 @@ char* getLobbyPlayers(const char* lobbyId) {
   return jsonResponse;
 }
 
-char* leaveLobby(const char* lobbyId, int playerId) {
-  if (!lobbyId || strlen(lobbyId) != 6 || playerId <= 0) {
-    return strdup("{\"result\":false,\"message\":\"Parametri non validi\",\"content\":null}");
+Lobby* createLobby(int idCreator, bool isPrivate, LobbyRotation rotation) {
+  if (!isValidPlayerId(idCreator)) {
+    fprintf(stderr, "ID creatore non valido: %d\n", idCreator);
+    return NULL;
   }
 
-  const char *host = getenv("DB_HOST");
-  if (!host) host = "db";
+  DBConnection* conn = connectToDatabase();
+  if (!conn) {
+    fprintf(stderr, "Connessione al database fallita\n");
+    return NULL;
+  }
 
-  DBConnection *conn = dbConnectWithOptions("db", "deltalabtsf", "postgres", "admin", 30);
-  if (!conn || !dbIsConnected(conn)) {
-    if (conn) dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Connessione al database fallita\",\"content\":null}");
+  /* Verify user exists */
+  const char* userCheckSql = "SELECT 1 FROM account WHERE id = $1 LIMIT 1";
+  char idCreatorStr[16];
+  snprintf(idCreatorStr, sizeof(idCreatorStr), "%d", idCreator);
+  const char* userParams[1] = { idCreatorStr };
+
+  PGresult* userRes = dbExecutePrepared(conn, userCheckSql, 1, userParams);
+  if (!userRes || PQntuples(userRes) == 0) {
+    if (userRes) PQclear(userRes);
+    fprintf(stderr, "Utente con ID %d non trovato\n", idCreator);
+    dbDisconnect(conn);
+    return NULL;
+  }
+  PQclear(userRes);
+
+  /* Generate unique lobby ID */
+  char lobbyId[LOBBY_ID_LENGTH + 1];
+  int attempts = 0;
+
+  do {
+    generateLobbyId(lobbyId);
+    attempts++;
+
+    if (attempts >= MAX_ID_GENERATION_ATTEMPTS) {
+      fprintf(stderr, "Impossibile generare un ID unico dopo %d tentativi\n", MAX_ID_GENERATION_ATTEMPTS);
+      dbDisconnect(conn);
+      return NULL;
+    }
+  } while (lobbyIdExists(conn, lobbyId));
+
+  /* Begin transaction */
+  if (!dbBeginTransaction(conn)) {
+    fprintf(stderr, "Impossibile avviare la transazione\n");
+    dbDisconnect(conn);
+    return NULL;
+  }
+
+  /* Insert into database */
+  const char* sql = "INSERT INTO lobby (id, utenti_connessi, rotazione, id_accountcreatore, is_private, status) "
+                    "VALUES ($1, $2, $3, $4, $5, $6)";
+
+  const char* rotationStr = rotationEnumToDb(rotation);
+  const char* isPrivateStr = isPrivate ? "t" : "f";
+  const char* statusStr = STATUS_WAITING;
+  const char* connectedUsers = "0";
+
+  const char* paramValues[6] = {
+    lobbyId,
+    connectedUsers,
+    rotationStr,
+    idCreatorStr,
+    isPrivateStr,
+    statusStr
+  };
+
+  PGresult* res = dbExecutePrepared(conn, sql, 6, paramValues);
+  if (!res) {
+    fprintf(stderr, "Inserimento fallito: %s\n", dbGetErrorMessage(conn));
+    dbRollbackTransaction(conn);
+    dbDisconnect(conn);
+    return NULL;
+  }
+  PQclear(res);
+
+  /* Commit transaction */
+  if (!dbCommitTransaction(conn)) {
+    fprintf(stderr, "Impossibile completare la transazione\n");
+    dbDisconnect(conn);
+    return NULL;
+  }
+
+  dbDisconnect(conn);
+
+  /* Create Lobby structure */
+  Lobby* lobby = malloc(sizeof(Lobby));
+  if (!lobby) {
+    fprintf(stderr, "Errore nell'allocazione di memoria per Lobby\n");
+    return NULL;
+  }
+
+  strncpy(lobby->id, lobbyId, sizeof(lobby->id) - 1);
+  lobby->id[sizeof(lobby->id) - 1] = '\0';
+  lobby->idCreator = idCreator;
+  lobby->rotation = rotation;
+  lobby->isPrivate = isPrivate;
+  lobby->status = WAITING;
+
+  return lobby;
+}
+
+static bool parseCreateLobbyRequest(const char* requestBody, int* outIdCreator, bool* outIsPrivate, LobbyRotation* outRotation) {
+  if (!requestBody || !outIdCreator || !outIsPrivate || !outRotation) {
+    return false;
+  }
+
+  /* Default values */
+  *outIdCreator = 0;
+  *outIsPrivate = false;
+  *outRotation = CLOCKWISE;
+
+  /* Create copy for parsing */
+  char* copy = strdup(requestBody);
+  if (!copy) {
+    return false;
+  }
+
+  /* Remove whitespace */
+  char* dst = copy;
+  for (const char* src = copy; *src; src++) {
+    if (!isspace((unsigned char)*src)) {
+      *dst++ = *src;
+    }
+  }
+  *dst = '\0';
+
+  /* Parse idCreator */
+  char* idStart = strstr(copy, "\"idCreator\":");
+  if (idStart) {
+    idStart += strlen("\"idCreator\":");
+    *outIdCreator = atoi(idStart);
+  }
+
+  /* Parse isPrivate */
+  char* privateStart = strstr(copy, "\"isPrivate\":");
+  if (privateStart) {
+    privateStart += strlen("\"isPrivate\":");
+    *outIsPrivate = (strncmp(privateStart, "true", 4) == 0);
+  }
+
+  /* Parse rotation */
+  char* rotationStart = strstr(copy, "\"rotation\":\"");
+  if (rotationStart) {
+    rotationStart += strlen("\"rotation\":\"");
+    char* rotationEnd = strchr(rotationStart, '"');
+    if (rotationEnd) {
+      size_t len = rotationEnd - rotationStart;
+      if (strncmp(rotationStart, ROTATION_COUNTERCLOCKWISE_JSON, len) == 0 ||
+          strncmp(rotationStart, ROTATION_COUNTERCLOCKWISE_DB, len) == 0) {
+        *outRotation = COUNTERCLOCKWISE;
+      }
+    }
+  }
+
+  free(copy);
+  return (*outIdCreator > 0);
+}
+
+char* createLobbyEndpoint(const char* requestBody) {
+  if (!requestBody) {
+    return createJsonError("Richiesta invalida");
+  }
+
+  int idCreator;
+  bool isPrivate;
+  LobbyRotation rotation;
+
+  if (!parseCreateLobbyRequest(requestBody, &idCreator, &isPrivate, &rotation)) {
+    return createJsonError("Parametri della richiesta non validi");
+  }
+
+  if (!isValidPlayerId(idCreator)) {
+    return createJsonError("L'ID del creatore deve essere un numero positivo");
+  }
+
+  Lobby* lobby = createLobby(idCreator, isPrivate, rotation);
+  if (!lobby) {
+    return createJsonError("Impossibile creare la lobby");
+  }
+
+  char* jsonResponse = malloc(JSON_BUFFER_MEDIUM);
+  if (!jsonResponse) {
+    free(lobby);
+    return createJsonError("Errore nell'allocazione di memoria");
+  }
+
+  snprintf(jsonResponse, JSON_BUFFER_MEDIUM,
+            "{\"result\":true,\"message\":\"Lobby creata con successo\",\"content\":{"
+            "\"id\":\"%s\","
+            "\"connectedUsers\":1,"
+            "\"rotation\":\"%s\","
+            "\"creator\":%d,"
+            "\"isPrivate\":%s,"
+            "\"status\":\"waiting\""
+            "}}",
+            lobby->id,
+            lobby->rotation == CLOCKWISE ? ROTATION_CLOCKWISE_JSON : ROTATION_COUNTERCLOCKWISE_JSON,
+            lobby->idCreator,
+            lobby->isPrivate ? "true" : "false");
+
+  free(lobby);
+  return jsonResponse;
+}
+
+char* deleteLobby(const char* lobbyId, int creatorId) {
+  if (!isValidLobbyId(lobbyId)) {
+    return createJsonError("ID lobby non valido");
+  }
+
+  if (!isValidPlayerId(creatorId)) {
+    return createJsonError("ID creatore non valido");
+  }
+
+  DBConnection* conn = connectToDatabase();
+  if (!conn) {
+    return createJsonError("Connessione al database fallita");
+  }
+
+  /* Verify lobby exists and check creator */
+  const char* checkSql = "SELECT id_accountcreatore FROM lobby WHERE id = $1";
+  const char* checkParams[1] = { lobbyId };
+
+  PGresult* checkRes = dbExecutePrepared(conn, checkSql, 1, checkParams);
+  if (!checkRes || PQntuples(checkRes) == 0) {
+    if (checkRes) PQclear(checkRes);
+    dbDisconnect(conn);
+    return createJsonError("Lobby non trovata");
+  }
+
+  /* Check if user is creator */
+  int dbCreatorId = atoi(PQgetvalue(checkRes, 0, 0));
+  PQclear(checkRes);
+
+  if (dbCreatorId != creatorId) {
+    dbDisconnect(conn);
+    return createJsonError("Solo il creatore può eliminare la lobby");
+  }
+
+  /* Delete lobby */
+  const char* deleteSql = "DELETE FROM lobby WHERE id = $1 AND id_accountcreatore = $2";
+
+  char creatorIdStr[16];
+  snprintf(creatorIdStr, sizeof(creatorIdStr), "%d", creatorId);
+
+  const char* deleteParams[2] = { lobbyId, creatorIdStr };
+
+  PGresult* deleteRes = dbExecutePrepared(conn, deleteSql, 2, deleteParams);
+  if (!deleteRes) {
+    dbDisconnect(conn);
+    return createJsonError("Impossibile eliminare la lobby");
+  }
+
+  int affectedRows = atoi(PQcmdTuples(deleteRes));
+  PQclear(deleteRes);
+  dbDisconnect(conn);
+
+  if (affectedRows == 0) {
+    return createJsonError("Impossibile eliminare la lobby");
+  }
+
+  return createJsonSuccess("Lobby eliminata con successo", NULL);
+}
+
+char* joinLobby(const char* lobbyId, int playerId) {
+  if (!isValidLobbyId(lobbyId) || !isValidPlayerId(playerId)) {
+    return createJsonError("Parametri non validi");
+  }
+
+  DBConnection* conn = connectToDatabase();
+  if (!conn) {
+    return createJsonError("Connessione al database fallita");
   }
 
   if (!dbBeginTransaction(conn)) {
     dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Errore transazione\",\"content\":null}");
+    return createJsonError("Errore nella transazione");
   }
 
-  // Verifica se la lobby esiste e chi è il creatore
-  const char *creator_sql = "SELECT id_accountcreatore FROM lobby WHERE id = $1 FOR UPDATE"; // lock row per sicurezza
-  const char *creator_params[1] = { lobbyId };
+  /* Verify lobby exists and is not started */
+  const char* lobbyCheck = "SELECT utenti_connessi, status FROM lobby WHERE id = $1";
+  const char* lobbyParams[1] = { lobbyId };
 
-  PGresult *creator_res = dbExecutePrepared(conn, creator_sql, 1, creator_params);
-  if (!creator_res) {
+  PGresult* lobbyRes = dbExecutePrepared(conn, lobbyCheck, 1, lobbyParams);
+  if (!lobbyRes || PQntuples(lobbyRes) == 0) {
+    if (lobbyRes) PQclear(lobbyRes);
     dbRollbackTransaction(conn);
     dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Errore query creatore\",\"content\":null}");
+    return createJsonError("Lobby non trovata");
   }
 
-  if (PQntuples(creator_res) == 0) {
-    PQclear(creator_res);
+  const char* lobbyStatus = PQgetvalue(lobbyRes, 0, 1);
+
+  if (strcmp(lobbyStatus, STATUS_STARTED) == 0) {
+    PQclear(lobbyRes);
     dbRollbackTransaction(conn);
     dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Lobby non trovata\",\"content\":null}");
+    return createJsonError("Lobby già avviata");
   }
+  PQclear(lobbyRes);
 
-  char *endptr = NULL;
-  long lobby_creator_long = strtol(PQgetvalue(creator_res, 0, 0), &endptr, 10);
-  if (endptr == PQgetvalue(creator_res, 0, 0) || lobby_creator_long <= 0) {
-    PQclear(creator_res);
+  /* Check if player is already in lobby */
+  const char* playerCheck = "SELECT status FROM lobby_players WHERE lobby_id = $1 AND player_id = $2";
+
+  char playerIdStr[16];
+  snprintf(playerIdStr, sizeof(playerIdStr), "%d", playerId);
+  const char* playerParams[2] = { lobbyId, playerIdStr };
+
+  PGresult* playerRes = dbExecutePrepared(conn, playerCheck, 2, playerParams);
+  if (!playerRes) {
     dbRollbackTransaction(conn);
     dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Dati creatore lobby non validi\",\"content\":null}");
+    return createJsonError("Errore nella verifica del giocatore");
   }
 
-  int lobby_creator = (int)lobby_creator_long;
-  bool is_creator = (lobby_creator == playerId);
-  PQclear(creator_res);
+  if (PQntuples(playerRes) > 0) {
+    const char* playerStatus = PQgetvalue(playerRes, 0, 0);
+    PQclear(playerRes);
 
-  // Unica stringa per playerId usata nelle prepared statements
+    if (strcmp(playerStatus, STATUS_ACTIVE) == 0 || strcmp(playerStatus, STATUS_WAITING) == 0) {
+      dbRollbackTransaction(conn);
+      dbDisconnect(conn);
+      return createJsonError("Giocatore già presente nella lobby");
+    }
+  } else {
+    PQclear(playerRes);
+  }
+
+  /* Count active players */
+  const char* activeCountSql = "SELECT COUNT(*) FROM lobby_players WHERE lobby_id = $1 AND status = 'active'";
+
+  PGresult* countRes = dbExecutePrepared(conn, activeCountSql, 1, lobbyParams);
+  if (!countRes) {
+    dbRollbackTransaction(conn);
+    dbDisconnect(conn);
+    return createJsonError("Errore nel conteggio dei giocatori");
+  }
+
+  int activePlayers = atoi(PQgetvalue(countRes, 0, 0));
+  PQclear(countRes);
+
+  /* Determine new player status */
+  const char* newStatus = (activePlayers < MAX_PLAYERS) ? STATUS_ACTIVE : STATUS_WAITING;
+  int position = 0;
+
+  if (strcmp(newStatus, STATUS_WAITING) == 0) {
+    /* Find next position in queue */
+    const char* positionSql = "SELECT COALESCE(MAX(position), 0) + 1 FROM lobby_players "
+                              "WHERE lobby_id = $1 AND status = 'waiting'";
+
+    PGresult* posRes = dbExecutePrepared(conn, positionSql, 1, lobbyParams);
+    if (posRes && PQntuples(posRes) > 0) {
+      position = atoi(PQgetvalue(posRes, 0, 0));
+    }
+    if (posRes) PQclear(posRes);
+  }
+
+  /* Insert/update player */
+  const char* insertSql = "INSERT INTO lobby_players (lobby_id, player_id, status, position) "
+                          "VALUES ($1, $2, $3, $4) "
+                          "ON CONFLICT (lobby_id, player_id) "
+                          "DO UPDATE SET status = $3, position = $4, joined_at = CURRENT_TIMESTAMP";
+
+  char positionStr[16];
+  snprintf(positionStr, sizeof(positionStr), "%d", position);
+  const char* insertParams[4] = { lobbyId, playerIdStr, newStatus, positionStr };
+
+  PGresult* insertRes = dbExecutePrepared(conn, insertSql, 4, insertParams);
+  if (!insertRes) {
+    dbRollbackTransaction(conn);
+    dbDisconnect(conn);
+    return createJsonError("Impossibile aggiungere il giocatore");
+  }
+  PQclear(insertRes);
+
+  if (!dbCommitTransaction(conn)) {
+    dbDisconnect(conn);
+    return createJsonError("Errore nel commit della transazione");
+  }
+
+  dbDisconnect(conn);
+
+  /* Build response */
+  char content[128];
+  snprintf(content, sizeof(content), "{\"status\":\"%s\",\"position\":%d}", newStatus, position);
+
+  return createJsonSuccess("Giocatore aggiunto con successo", content);
+}
+
+static bool promoteNextWaitingPlayer(DBConnection* conn, const char* lobbyId) {
+  if (!conn || !lobbyId) {
+    return false;
+  }
+
+  /* Find next player in queue */
+  const char* nextSql = "SELECT player_id FROM lobby_players "
+                        "WHERE lobby_id = $1 AND status = 'waiting' "
+                        "ORDER BY position ASC LIMIT 1 FOR UPDATE";
+  const char* nextParams[1] = { lobbyId };
+
+  PGresult* nextRes = dbExecutePrepared(conn, nextSql, 1, nextParams);
+  if (!nextRes || PQntuples(nextRes) == 0) {
+    if (nextRes) PQclear(nextRes);
+    return false;
+  }
+
+  const char* nextPlayerId = PQgetvalue(nextRes, 0, 0);
+
+  /* Promote player */
+  const char* promoteSql = "UPDATE lobby_players SET status = 'active', position = 0 "
+                          "WHERE lobby_id = $1 AND player_id = $2";
+  const char* promoteParams[2] = { lobbyId, nextPlayerId };
+
+  PGresult* promoteRes = dbExecutePrepared(conn, promoteSql, 2, promoteParams);
+  bool success = (promoteRes != NULL);
+
+  if (promoteRes) PQclear(promoteRes);
+  PQclear(nextRes);
+
+  return success;
+}
+
+char* leaveLobby(const char* lobbyId, int playerId) {
+  if (!isValidLobbyId(lobbyId) || !isValidPlayerId(playerId)) {
+    return createJsonError("Parametri non validi");
+  }
+
+  DBConnection* conn = connectToDatabase();
+  if (!conn) {
+    return createJsonError("Connessione al database fallita");
+  }
+
+  if (!dbBeginTransaction(conn)) {
+    dbDisconnect(conn);
+    return createJsonError("Errore nella transazione");
+  }
+
+  /* Check if lobby exists and get creator */
+  const char* creatorSql = "SELECT id_accountcreatore FROM lobby WHERE id = $1 FOR UPDATE";
+  const char* creatorParams[1] = { lobbyId };
+
+  PGresult* creatorRes = dbExecutePrepared(conn, creatorSql, 1, creatorParams);
+  if (!creatorRes || PQntuples(creatorRes) == 0) {
+    if (creatorRes) PQclear(creatorRes);
+    dbRollbackTransaction(conn);
+    dbDisconnect(conn);
+    return createJsonError("Lobby non trovata");
+  }
+
+  char* endptr = NULL;
+  long lobbyCreatorLong = strtol(PQgetvalue(creatorRes, 0, 0), &endptr, 10);
+
+  if (endptr == PQgetvalue(creatorRes, 0, 0) || lobbyCreatorLong <= 0) {
+    PQclear(creatorRes);
+    dbRollbackTransaction(conn);
+    dbDisconnect(conn);
+    return createJsonError("Id creatore non valido");
+  }
+
+  int lobbyCreator = (int)lobbyCreatorLong;
+  bool isCreator = (lobbyCreator == playerId);
+  PQclear(creatorRes);
+
   char playerIdStr[16];
   snprintf(playerIdStr, sizeof(playerIdStr), "%d", playerId);
 
-  if (is_creator) {
-    // Il creatore elimina la lobby (cascade su lobby_players)
-    const char *delete_lobby_sql = "DELETE FROM lobby WHERE id = $1 AND id_accountcreatore = $2";
-    const char *delete_params[2] = { lobbyId, playerIdStr };
+  if (isCreator) {
+    /* Creator deletes entire lobby */
+    const char* deleteLobby = "DELETE FROM lobby WHERE id = $1 AND id_accountcreatore = $2";
+    const char* deleteParams[2] = { lobbyId, playerIdStr };
 
-    PGresult *delete_res = dbExecutePrepared(conn, delete_lobby_sql, 2, delete_params);
-    if (!delete_res) {
+    PGresult* deleteRes = dbExecutePrepared(conn, deleteLobby, 2, deleteParams);
+    if (!deleteRes) {
       dbRollbackTransaction(conn);
       dbDisconnect(conn);
-      return strdup("{\"result\":false,\"message\":\"Errore eliminazione lobby\",\"content\":null}");
+      return createJsonError("Errore nella cancellazione della lobby");
     }
 
-    long affected = strtol(PQcmdTuples(delete_res), NULL, 10);
-    PQclear(delete_res);
+    long affected = strtol(PQcmdTuples(deleteRes), NULL, 10);
+    PQclear(deleteRes);
 
     if (affected == 0) {
       dbRollbackTransaction(conn);
       dbDisconnect(conn);
-      return strdup("{\"result\":false,\"message\":\"Impossibile eliminare la lobby\",\"content\":null}");
+      return createJsonError("Impossibile eliminare la lobby");
     }
 
     if (!dbCommitTransaction(conn)) {
       dbDisconnect(conn);
-      return strdup("{\"result\":false,\"message\":\"Errore commit eliminazione\",\"content\":null}");
+      return createJsonError("Errore nel commit");
     }
 
     dbDisconnect(conn);
 
-    return strdup("{\"result\":true,\"message\":\"Lobby eliminata - creatore uscito\",\"content\":{\"lobby_deleted\":true}}");
+    char content[64];
+    snprintf(content, sizeof(content), "{\"lobby_deleted\":true}");
+    return createJsonSuccess("Lobby eliminata - creatore uscito", content);
   }
 
-  // Giocatore normale: verifica presenza e status
-  const char *check_sql = "SELECT status FROM lobby_players WHERE lobby_id = $1 AND player_id = $2 FOR UPDATE";
-  const char *check_params[2] = { lobbyId, playerIdStr };
+  /* Regular player: verify presence */
+  const char* checkSql = "SELECT status FROM lobby_players "
+                        "WHERE lobby_id = $1 AND player_id = $2 FOR UPDATE";
+  const char* checkParams[2] = { lobbyId, playerIdStr };
 
-  PGresult *check_res = dbExecutePrepared(conn, check_sql, 2, check_params);
-  if (!check_res) {
+  PGresult* checkRes = dbExecutePrepared(conn, checkSql, 2, checkParams);
+  if (!checkRes || PQntuples(checkRes) == 0) {
+    if (checkRes) PQclear(checkRes);
     dbRollbackTransaction(conn);
     dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Errore verifica giocatore\",\"content\":null}");
+    return createJsonError("Giocatore non nella lobby");
   }
 
-  if (PQntuples(check_res) == 0) {
-    PQclear(check_res);
+  const char* currentStatus = PQgetvalue(checkRes, 0, 0);
+  bool wasActive = (strcmp(currentStatus, STATUS_ACTIVE) == 0);
+  PQclear(checkRes);
+
+  /* Remove player */
+  const char* deleteSql = "DELETE FROM lobby_players WHERE lobby_id = $1 AND player_id = $2";
+  PGresult* deleteRes = dbExecutePrepared(conn, deleteSql, 2, checkParams);
+  if (!deleteRes) {
     dbRollbackTransaction(conn);
     dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Giocatore non trovato nella lobby\",\"content\":null}");
+    return createJsonError("Errore nella rimozione del giocatore");
   }
+  PQclear(deleteRes);
 
-  const char *current_status = PQgetvalue(check_res, 0, 0);
-  bool was_active = (strcmp(current_status, "active") == 0);
-  PQclear(check_res);
-
-  // Rimuovi il giocatore
-  const char *delete_sql = "DELETE FROM lobby_players WHERE lobby_id = $1 AND player_id = $2";
-  PGresult *delete_res = dbExecutePrepared(conn, delete_sql, 2, check_params);
-  if (!delete_res) {
-    dbRollbackTransaction(conn);
-    dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Errore rimozione giocatore\",\"content\":null}");
-  }
-  PQclear(delete_res);
-
-  if (was_active) {
-    // Trova il prossimo in coda (il più piccolo position)
-    const char *next_sql = "SELECT player_id FROM lobby_players WHERE lobby_id = $1 AND status = 'waiting' ORDER BY position ASC LIMIT 1 FOR UPDATE";
-    const char *next_params[1] = { lobbyId };  // FIX: definisci next_params invece di usare lobby_params
-    PGresult *next_res = dbExecutePrepared(conn, next_sql, 1, next_params);
-    if (next_res && PQntuples(next_res) > 0) {
-      const char *next_player_id = PQgetvalue(next_res, 0, 0);
-
-      // Promuovi quel giocatore
-      const char *promote_sql = "UPDATE lobby_players SET status = 'active', position = 0 WHERE lobby_id = $1 AND player_id = $2";
-      const char *promote_params[2] = { lobbyId, next_player_id };
-      PGresult *promote_res = dbExecutePrepared(conn, promote_sql, 2, promote_params);
-      if (promote_res) {
-        PQclear(promote_res);  // FIX: rimuovi la variabile 'promoted' inutilizzata
-      }
-
-      PQclear(next_res);
-
-      // Nota: non riordiniamo le "position" degli altri in questa funzione;
-      // se necessario, aggiungi una logica che normalizzi le position nella coda.
-    } else if (next_res) {
-      PQclear(next_res);
-    }
+  /* If active player left, promote next waiting player */
+  if (wasActive) {
+    promoteNextWaitingPlayer(conn, lobbyId);
   }
 
   if (!dbCommitTransaction(conn)) {
     dbDisconnect(conn);
-    return strdup("{\"result\":false,\"message\":\"Errore commit transazione\",\"content\":null}");
+    return createJsonError("Errore nel commit");
   }
 
   dbDisconnect(conn);
-  return strdup("{\"result\":true,\"message\":\"Giocatore rimosso con successo\",\"content\":null}");
+  return createJsonSuccess("Giocatore rimosso con successo", NULL);
 }
