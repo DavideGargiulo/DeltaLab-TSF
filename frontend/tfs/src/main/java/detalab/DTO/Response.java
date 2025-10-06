@@ -5,7 +5,7 @@ public class Response {
   private int status;
   private String message;
   private String content;
-  
+
   public Response(boolean result, int status, String message, String content) {
     this.result = result;
     this.status = status;

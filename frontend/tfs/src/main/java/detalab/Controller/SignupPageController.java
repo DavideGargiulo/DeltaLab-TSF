@@ -14,72 +14,72 @@ import javafx.scene.control.TextField;
 
 public class SignupPageController extends GeneralPageController {
 
-    @FXML
-    TextField emailField;
+  @FXML
+  TextField emailField;
 
-    @FXML
-    TextField usernameField;
+  @FXML
+  TextField usernameField;
 
-    @FXML
-    PasswordField passwordField;
+  @FXML
+  PasswordField passwordField;
 
-    @FXML
-    private ComboBox<String> langBox;
+  @FXML
+  private ComboBox<String> langBox;
 
-    @FXML
-    private void signup() throws IOException {
+  @FXML
+  private void signup() throws IOException {
 
-        String email = emailField.getText();
-        String username = usernameField.getText();
-        String password = passwordField.getText();
-        String language =  LanguageHelper.getCodeFromName(langBox.getValue());
+    String email = emailField.getText();
+    String username = usernameField.getText();
+    String password = passwordField.getText();
+    String language = LanguageHelper.getCodeFromName(langBox.getValue());
 
-        try {
+    try {
 
-            // Corpo della richiesta JSON
-            JSONObject requestBody = new JSONObject();
-            requestBody.put("username", username);
-            requestBody.put("email", email);
-            requestBody.put("password", password);
-            requestBody.put("lingua", language);
+      // Corpo della richiesta JSON
+      JSONObject requestBody = new JSONObject();
+      requestBody.put("username", username);
+      requestBody.put("email", email);
+      requestBody.put("password", password);
+      requestBody.put("lingua", language);
 
-            Response response = makeRequest("auth/register", "POST", requestBody.toString(), 201);
+      Response response = makeRequest("auth/register", "POST", requestBody.toString(), 201);
 
-            System.out.println("result: " + response.getResult());
-            System.out.println("status: " + response.getStatus());
-            System.out.println("message: " + response.getMessage());
-            System.out.println("content: " + response.getContent() + "\n");
+      System.out.println("result: " + response.getResult());
+      System.out.println("status: " + response.getStatus());
+      System.out.println("message: " + response.getMessage());
+      System.out.println("content: " + response.getContent() + "\n");
 
-            if (response.getStatus() == 201) {
-                showAlert(AlertType.INFORMATION, "Successo", "Registrazione avvenuta con successo.", "Benvenuto in DeltaLab!");
-                App.setRoot("login");
-            } else {
-                showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", response.getMessage());
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", "Errore imprevisto!");
-        }
-
-    }
-
-    @FXML
-    private void switchToLogin() throws IOException {
+      if (response.getStatus() == 201) {
+        showAlert(AlertType.INFORMATION, "Successo", "Registrazione avvenuta con successo.", "Benvenuto in DeltaLab!");
         App.setRoot("login");
+      } else {
+        showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", response.getMessage());
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", "Errore imprevisto!");
     }
 
-    @FXML
-    private void loadLanguages() {
+  }
 
-        langBox.getItems().addAll(LanguageHelper.getLanguageNames());
-        langBox.setValue("Italiano"); // Default value
+  @FXML
+  private void switchToLogin() throws IOException {
+    App.setRoot("login");
+  }
 
-    }
+  @FXML
+  private void loadLanguages() {
 
-    @FXML
-    public void initialize() {
-        //Loads Languages in ComboBox
-        loadLanguages();
-    }
+    langBox.getItems().addAll(LanguageHelper.getLanguageNames());
+    langBox.setValue("Italiano"); // Default value
+
+  }
+
+  @FXML
+  public void initialize() {
+    // Loads Languages in ComboBox
+    loadLanguages();
+  }
 
 }

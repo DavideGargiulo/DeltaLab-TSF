@@ -1,7 +1,7 @@
 package detalab.DTO;
 
 public class Lobby {
-  
+
   private String ID;
   private int users;
   private String rotation;
@@ -38,13 +38,8 @@ public class Lobby {
 
   @Override
   public String toString() {
-    return "Lobby{" +
-        "ID='" + ID + '\'' +
-        ", users=" + users +
-        ", rotation='" + rotation + '\'' +
-        ", creator='" + creator + '\'' +
-        ", status='" + status + '\'' +
-        '}';
+    return "Lobby{" + "ID='" + ID + '\'' + ", users=" + users + ", rotation='" + rotation + '\'' + ", creator='"
+        + creator + '\'' + ", status='" + status + '\'' + '}';
   }
 
 }

@@ -19,165 +19,161 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.CheckBox;
 import javafx.stage.Stage;
 
-
 public class CreateLobbyDialogController extends GeneralPageController {
 
-    @FXML
-    private ComboBox<String> rotationBox;
+  @FXML
+  private ComboBox<String> rotationBox;
 
-    @FXML
-    private CheckBox privateCheckBox;
+  @FXML
+  private CheckBox privateCheckBox;
 
-    @FXML
-    private Label rotationLabel;
+  @FXML
+  private Label rotationLabel;
 
-    @FXML
-    private Label privateLabel;
+  @FXML
+  private Label privateLabel;
 
-    @FXML
-    private Button createButton;
+  @FXML
+  private Button createButton;
 
-    @FXML
-    private Button cancelButton;
+  @FXML
+  private Button cancelButton;
 
-    @FXML
-    public void closeDialog() {
+  @FXML
+  public void closeDialog() {
     Stage stage = (Stage) rotationBox.getScene().getWindow();
     stage.close();
+  }
+
+  @FXML
+  private void createLobby() {
+
+    String rotation = rotationBox.getValue();
+    boolean isPrivate = privateCheckBox.isSelected();
+
+    try {
+
+      JSONObject json = new JSONObject();
+      json.put("idCreator", LoggedUser.getInstance().getId());
+      json.put("isPrivate", isPrivate);
+      json.put("rotation", rotation.toLowerCase());
+
+      String jsonInput = json.toString();
+
+      System.out.println("JSON Input: " + jsonInput);
+
+      Response response = makeRequest("lobby", "POST", jsonInput, 201);
+
+      System.out.println("result: " + response.getResult());
+      System.out.println("status: " + response.getStatus());
+      System.out.println("message: " + response.getMessage());
+      System.out.println("content: " + response.getContent() + "\n");
+
+      if (response.getStatus() == 201) {
+        showAlert(AlertType.INFORMATION, "Successo", "Lobby creata con successo.", "Ora puoi giocare!");
+        setLobbySession(new JSONObject(response.getContent()).getString("id"));
+        closeDialog();
+      } else {
+        showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", response.getMessage());
+      }
+
+    } catch (IOException e) {
+      e.printStackTrace();
+      showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", "Errore imprevisto!");
     }
 
-    @FXML
-    private void createLobby() {
+  }
 
-        String rotation = rotationBox.getValue();
-        boolean isPrivate = privateCheckBox.isSelected();
+  private void setLobbySession(String lobbyID) {
 
-        try {
+    CurrentLobby.cleanLobby();
 
-            JSONObject json = new JSONObject();
-            json.put("idCreator", LoggedUser.getInstance().getId());
-            json.put("isPrivate", isPrivate);
-            json.put("rotation", rotation.toLowerCase());
+    try {
+      Response response = makeRequest("lobby/" + lobbyID, "GET", 200);
 
-            String jsonInput = json.toString();
+      System.out.println("result: " + response.getResult());
+      System.out.println("status: " + response.getStatus());
+      System.out.println("message: " + response.getMessage());
+      System.out.println("content: " + response.getContent() + "\n");
 
-            System.out.println("JSON Input: " + jsonInput);
+      if (response.getStatus() == 200) {
+        JSONObject obj = new JSONObject(response.getContent());
 
-            Response response = makeRequest("lobby", "POST", jsonInput, 201);
+        Lobby lobby = new Lobby(obj.getString("id"), obj.getInt("utentiConnessi"), obj.getString("rotation"),
+            getUsernameById(obj.getString("creator")), obj.getString("status"));
 
-            System.out.println("result: " + response.getResult());
-            System.out.println("status: " + response.getStatus());
-            System.out.println("message: " + response.getMessage());
-            System.out.println("content: " + response.getContent() + "\n");
+        ArrayList<User> users = new ArrayList<>();
+        users.add(LoggedUser.getInstance());
+        CurrentLobby.getInstance(lobby, users, new ArrayList<User>());
 
-            if (response.getStatus() == 201) {
-                showAlert(AlertType.INFORMATION, "Successo", "Lobby creata con successo.", "Ora puoi giocare!");
-                setLobbySession(new JSONObject(response.getContent()).getString("id"));
-                closeDialog();
-            } else {
-                showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", response.getMessage());
-            }
-
-        } catch (IOException e) {
-            e.printStackTrace();
-            showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", "Errore imprevisto!");
-        }
-
+      } else {
+        showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", response.getMessage());
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", "Errore imprevisto!");
     }
 
-    private void setLobbySession(String lobbyID) {
+  }
 
-        CurrentLobby.cleanLobby();
+  private void translateUI() {
 
-        try {
-            Response response = makeRequest("lobby/" + lobbyID, "GET", 200);
+    try {
 
-            System.out.println("result: " + response.getResult());
-            System.out.println("status: " + response.getStatus());
-            System.out.println("message: " + response.getMessage());
-            System.out.println("content: " + response.getContent() + "\n");
+      String translatedText = LanguageHelper
+          .translate("Rotation. Private. Create Lobby, Franwik!. Cancel. Spin clockwise. Spin counterclockwise.");
+      List<String> translatedStrings = new ArrayList<>();
 
-            if (response.getStatus() == 200) {
-                JSONObject obj = new JSONObject(response.getContent());
+      for (String str : translatedText.split("\\.")) {
+        translatedStrings.add(str.trim());
+      }
 
-                Lobby lobby = new Lobby(
-                    obj.getString("id"),
-                    obj.getInt("utentiConnessi"),
-                    obj.getString("rotation"),
-                    getUsernameById(obj.getString("creator")),
-                    obj.getString("status")
-                );
+      // Translate Labels
+      rotationLabel.setText(translatedStrings.get(0));
+      privateLabel.setText(translatedStrings.get(1));
 
-                ArrayList<User> users = new ArrayList<>();
-                users.add(LoggedUser.getInstance());
-                CurrentLobby.getInstance(lobby, users, new ArrayList<User>());
+      // Translate Buttons
+      createButton.setText((translatedStrings.get(2).split("\\s+")[0]));
+      cancelButton.setText(translatedStrings.get(3));
 
+      // Translate ComboBox
+      rotationBox.getItems().clear();
+      rotationBox.getItems().addAll(capitalizeLastWord(translatedStrings.get(4)),
+          capitalizeLastWord(translatedStrings.get(5)));
+      rotationBox.setValue(capitalizeLastWord(translatedStrings.get(4)));
 
-            } else {
-                showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", response.getMessage());
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", "Errore imprevisto!");
-        }
+    } catch (Exception e) {
 
+      // Default transations in case of error
+
+      // Labels
+      rotationLabel.setText("Rotation");
+      privateLabel.setText("Private");
+
+      // Buttons
+      createButton.setText("Create");
+      cancelButton.setText("Cancel");
+
+      // ComboBox
+      rotationBox.getItems().clear();
+      rotationBox.getItems().addAll("Clockwise", "Counterclockwise");
+      rotationBox.setValue("Clockwise");
+
+      e.printStackTrace();
+      showAlert(AlertType.ERROR, "Error", "An error occurred.", "Unable to translate!");
     }
+  }
 
-    private void translateUI() {
+  private String capitalizeLastWord(String input) {
+    String lastWord = input.replaceAll(".*\\s", "");
+    if (lastWord.isEmpty())
+      return lastWord;
+    return lastWord.substring(0, 1).toUpperCase() + lastWord.substring(1);
+  }
 
-        try {
-
-            String translatedText = LanguageHelper.translate("Rotation. Private. Create Lobby, Franwik!. Cancel. Spin clockwise. Spin counterclockwise.");
-            List<String> translatedStrings = new ArrayList<>();
-
-            for (String str : translatedText.split("\\.")) {
-                translatedStrings.add(str.trim());
-            }
-
-            // Translate Labels
-            rotationLabel.setText(translatedStrings.get(0));
-            privateLabel.setText(translatedStrings.get(1));
-
-            // Translate Buttons
-            createButton.setText((translatedStrings.get(2).split("\\s+")[0]));
-            cancelButton.setText(translatedStrings.get(3));
-
-            // Translate ComboBox
-            rotationBox.getItems().clear();
-            rotationBox.getItems().addAll(capitalizeLastWord(translatedStrings.get(4)), capitalizeLastWord(translatedStrings.get(5)));
-            rotationBox.setValue(capitalizeLastWord(translatedStrings.get(4)));
-
-        } catch (Exception e) {
-
-            // Default transations in case of error
-
-            // Labels
-            rotationLabel.setText("Rotation");
-            privateLabel.setText("Private");
-
-            // Buttons
-            createButton.setText("Create");
-            cancelButton.setText("Cancel");
-
-            // ComboBox
-            rotationBox.getItems().clear();
-            rotationBox.getItems().addAll("Clockwise", "Counterclockwise");
-            rotationBox.setValue("Clockwise");
-
-            e.printStackTrace();
-            showAlert(AlertType.ERROR, "Error", "An error occurred.", "Unable to translate!");
-        }
-    }
-
-    private String capitalizeLastWord(String input) {
-        String lastWord = input.replaceAll(".*\\s", "");
-        if (lastWord.isEmpty()) return lastWord;
-        return lastWord.substring(0,1).toUpperCase() + lastWord.substring(1);
-    }
-
-    @FXML
-    public void initialize() {
-        translateUI();
-    }
+  @FXML
+  public void initialize() {
+    translateUI();
+  }
 
 }

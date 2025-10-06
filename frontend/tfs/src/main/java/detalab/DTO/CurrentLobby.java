@@ -7,18 +7,19 @@ public class CurrentLobby extends Lobby {
   ArrayList<User> playingUsers;
   ArrayList<User> spectators;
 
-  //Instance
+  // Instance
   private static CurrentLobby instance;
 
-  //Constructor
+  // Constructor
   private CurrentLobby(Lobby lobby, ArrayList<User> playingUsers, ArrayList<User> spectators) {
-    super(lobby.getLobbyID(), lobby.getLobbyUsers(), lobby.getLobbyRotation(), lobby.getLobbyCreator(), lobby.getLobbyStatus());
+    super(lobby.getLobbyID(), lobby.getLobbyUsers(), lobby.getLobbyRotation(), lobby.getLobbyCreator(),
+        lobby.getLobbyStatus());
     this.playingUsers = playingUsers;
     this.spectators = spectators;
   }
 
   public static CurrentLobby getInstance(Lobby lobby, ArrayList<User> playingUsers, ArrayList<User> spectators) {
-    if(instance == null)
+    if (instance == null)
       instance = new CurrentLobby(lobby, playingUsers, spectators);
     return instance;
   }

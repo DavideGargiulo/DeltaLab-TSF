@@ -14,90 +14,90 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Alert;
 
-
 public abstract class GeneralPageController {
 
-    protected static Optional<ButtonType> showAlert(Alert.AlertType alertType, String title, String header, String content){
-        Alert alert = new Alert(alertType);
-        alert.setTitle(title);
-        alert.setHeaderText(header);
-        alert.setContentText(content);
-        return alert.showAndWait();
+  protected static Optional<ButtonType> showAlert(Alert.AlertType alertType, String title, String header,
+      String content) {
+    Alert alert = new Alert(alertType);
+    alert.setTitle(title);
+    alert.setHeaderText(header);
+    alert.setContentText(content);
+    return alert.showAndWait();
+  }
+
+  private String url = "http://localhost:8080/";
+
+  protected Response makeRequest(String endpoint, String method, int expectedStatus) throws IOException {
+    return makeRequest(endpoint, method, "", expectedStatus);
+  }
+
+  protected Response makeRequest(String endpoint, String method, String body, int expectedStatus) throws IOException {
+    URL url = new URL(this.url + endpoint);
+    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+
+    // Configurazione della connessione
+    conn.setRequestMethod(method);
+
+    if (method.equals("POST") || method.equals("PUT")) {
+
+      conn.setRequestProperty("Content-Type", "application/json");
+      conn.setDoOutput(true);
+
+      // Scrittura del body nella richiesta
+      try (OutputStream os = conn.getOutputStream()) {
+        byte[] input = body.getBytes("utf-8");
+        os.write(input, 0, input.length);
+      }
     }
 
-    private String url = "http://localhost:8080/";
+    // Leggi lo status code
+    int statusCode = conn.getResponseCode();
 
-    protected Response makeRequest(String endpoint, String method, int expectedStatus) throws IOException {
-        return makeRequest(endpoint, method, "", expectedStatus);
+    BufferedReader br = new BufferedReader(
+        new InputStreamReader((statusCode == expectedStatus) ? conn.getInputStream() : conn.getErrorStream(), "utf-8"));
+
+    StringBuilder response = new StringBuilder();
+    String line;
+    while ((line = br.readLine()) != null) {
+      response.append(line.trim());
     }
 
-    protected Response makeRequest(String endpoint, String method, String body, int expectedStatus) throws IOException {
-        URL url = new URL(this.url + endpoint);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+    // Chiusura della connessione
+    conn.disconnect();
 
-        // Configurazione della connessione
-        conn.setRequestMethod(method);
+    String responseBody = response.toString();
+    JSONObject json = new JSONObject(responseBody);
 
-        if (method.equals("POST") || method.equals("PUT")) {
+    return new Response(json.getBoolean("result"), statusCode, json.getString("message"),
+        json.optString("content", null));
 
-            conn.setRequestProperty("Content-Type", "application/json");
-            conn.setDoOutput(true);
+  }
 
-            // Scrittura del body nella richiesta
-            try (OutputStream os = conn.getOutputStream()) {
-                byte[] input = body.getBytes("utf-8");
-                os.write(input, 0, input.length);
-            }
-        }
+  protected String getUsernameById(String userID) {
 
-        // Leggi lo status code
-        int statusCode = conn.getResponseCode();
+    String ret = "Sconosciuto";
 
-        BufferedReader br = new BufferedReader(new InputStreamReader(
-                    (statusCode == expectedStatus) ? conn.getInputStream() : conn.getErrorStream(),
-                    "utf-8"));
+    try {
 
-        StringBuilder response = new StringBuilder();
-        String line;
-        while ((line = br.readLine()) != null) {
-            response.append(line.trim());
-        }
+      Response response = makeRequest("user/" + userID, "GET", 200);
 
-        // Chiusura della connessione
-        conn.disconnect();
+      System.out.println("result: " + response.getResult());
+      System.out.println("status: " + response.getStatus());
+      System.out.println("message: " + response.getMessage());
+      System.out.println("content: " + response.getContent() + "\n");
 
-        String responseBody = response.toString();
-        JSONObject json = new JSONObject(responseBody);
+      if (response.getStatus() == 200) {
+        String content = response.getContent();
+        JSONObject obj = new JSONObject(content);
+        ret = obj.getString("nickname").trim();
+      }
 
-        return new Response(json.getBoolean("result"), statusCode, json.getString("message"), json.optString("content", null));
-
+    } catch (Exception e) {
+      e.printStackTrace();
+      showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", "Errore imprevisto!");
     }
 
-    protected String getUsernameById(String userID) {
-
-        String ret = "Sconosciuto";
-
-        try {
-
-            Response response = makeRequest("user/" + userID, "GET", 200);
-
-            System.out.println("result: " + response.getResult());
-            System.out.println("status: " + response.getStatus());
-            System.out.println("message: " + response.getMessage());
-            System.out.println("content: " + response.getContent() + "\n");
-
-            if (response.getStatus() == 200) {
-                String content = response.getContent();
-                JSONObject obj = new JSONObject(content);
-                ret = obj.getString("nickname").trim();
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            showAlert(AlertType.ERROR, "Errore", "Si è verificato un errore.", "Errore imprevisto!");
-        }
-
-        return ret;
-    }
+    return ret;
+  }
 
 }

@@ -109,5 +109,9 @@
   "ltex.completionEnabled": true,
   "latex-workshop.latex.autoBuild.run": "onSave",
   "files.trimTrailingWhitespace": true,
-  "java.configuration.updateBuildConfiguration": "automatic"
+  "java.configuration.updateBuildConfiguration": "automatic",
+  "java.format.settings.url": ".vscode/java-formatter.xml",
+  "[java]": {
+    "editor.detectIndentation": false
+  },
 }
