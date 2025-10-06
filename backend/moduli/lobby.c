@@ -22,7 +22,7 @@
 #define JSON_BUFFER_MEDIUM 1024
 #define JSON_BUFFER_LARGE 8192
 
-#define DEFAULT_DB_HOST "host.docker.internal"
+#define DEFAULT_DB_HOST "db"
 #define DEFAULT_DB_NAME "deltalabtsf"
 #define DEFAULT_DB_USER "postgres"
 #define DEFAULT_DB_PASS "admin"

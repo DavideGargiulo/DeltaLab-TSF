@@ -211,8 +211,7 @@ public class GamePageController extends GeneralPageController {
     }
 
     private void addPlayerToUI(User newPlayer) {
-        if (lobby.getLobbyRotation().equals("orario")) {
-            // TODO: fix difference between orario and clockwise
+        if (lobby.getLobbyRotation().equals("clockwise")) {
             for (int uiIndex = 0; uiIndex < players.size(); uiIndex++) {
                 PlayerUI playerUI = players.get(uiIndex);
                 if (!playerUI.container.isVisible()) {
@@ -245,7 +244,7 @@ public class GamePageController extends GeneralPageController {
             int playerId = Integer.parseInt(msg.optString("playerId"));
             User newPlayer;
 
-            if (activePlayers.size() <= 8) {
+            if (activePlayers.size() < 8) {
                 newPlayer = new User(playerId, msg.optString("username"), "active");
                 activePlayers.add(newPlayer);
                 lobby.setPlayers(activePlayers);
@@ -266,6 +265,84 @@ public class GamePageController extends GeneralPageController {
 
         });
 
+        // Handler per giocatore uscito
+        client.onMessageType("player_left", msg -> {
+
+            int playerId = Integer.parseInt(msg.optString("playerId"));
+            ArrayList<User> activePlayers = lobby.getPlayers();
+
+            if (playerId == activePlayers.get(0).getId()) {
+                Platform.runLater(() -> {
+                    try {
+                        showAlert(AlertType.INFORMATION, "Lobby Deleted","Host has left the lobby", null);
+                        exit();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                });
+                return;
+            }
+
+            ArrayList<User> waitingPlayers = lobby.getSpectators();
+            boolean wasActive = false;
+
+            for (User user : activePlayers) {
+                if (user.getId() == playerId) {
+                    activePlayers.remove(user);
+                    lobby.setPlayers(activePlayers);
+                    wasActive = true;
+                    Platform.runLater(() -> {
+                        reloadPlayersUIwhenLeaving();
+                    });
+                    break;
+                }
+            }
+
+            if (!wasActive) {
+                waitingPlayers.removeIf(user -> user.getId() == playerId);
+                lobby.setSpectators(waitingPlayers);
+                Platform.runLater(() -> {
+                    waitingList.getItems().removeIf(username -> username.equals(msg.optString("username")));
+                });
+            }
+
+        });
+
+    }
+
+    private void reloadPlayersUIwhenLeaving() {
+
+        setItemsNotVisible();
+        ArrayList<User> activePlayers = lobby.getPlayers();
+        int myPosition = getMyPositionInActivePlayers();
+
+        System.out.println("\n----------\n");
+        for (User user : activePlayers) {
+            System.out.println("Active player: " + user.getUsername());
+        }
+        System.out.println("\n----------\n");
+
+        if (myPosition != -1) {
+
+
+            for (int i = 0, uiIndex = 8 - myPosition; i < activePlayers.size(); i++, uiIndex++) {
+                User activeUser = activePlayers.get(i);
+                PlayerUI playerUI = players.get(uiIndex % players.size());
+                playerUI.container.setVisible(true);
+                playerUI.username.setText(activeUser.getUsername());
+            }
+        }
+        updatePlayersCount();
+    }
+
+    private int getMyPositionInActivePlayers() {
+        ArrayList<User> activePlayers = lobby.getPlayers();
+        for (int i = 0; i < activePlayers.size(); i++) {
+            if (activePlayers.get(i).getUsername().equals(LoggedUser.getInstance().getUsername())) {
+                return i;
+            }
+        }
+        return -1; // Not found
     }
 
     //Aggiorna il contatore dei giocatori con formato n/max
@@ -280,15 +357,6 @@ public class GamePageController extends GeneralPageController {
         ArrayList<User> activePlayers = lobby.getPlayers();
         ArrayList<User> waitingPlayers = lobby.getSpectators();
 
-        System.out.println("Rotation: " + lobby.getLobbyRotation());
-
-        // System.out.println("\n----------\n");
-        // System.out.println("Active Players:");
-        // for (User activeUser : activePlayers) {
-        //     System.out.println(activeUser.getUsername());
-        // }
-        // System.out.println("\n----------\n");
-
         if (lobby.getPlayers().size() <= 8) {
             if(!activePlayers.get(0).getUsername().equals(LoggedUser.getInstance().getUsername())){
                 activePlayers.add(LoggedUser.getInstance());
@@ -302,11 +370,10 @@ public class GamePageController extends GeneralPageController {
         }
 
 
-        if (lobby.getLobbyRotation().equals("orario")) {
-            // TODO: fix difference between orario and clockwise
-            for (int i = activePlayers.size() - 1, uiIndex = players.size() - 1; i >= 0 && uiIndex >= 0; i--, uiIndex--) {
+        if (lobby.getLobbyRotation().equals("clockwise")) {
+            for (int i = activePlayers.size() - 1, uiIndex = players.size(); i >= 0 && uiIndex >= 0; i--, uiIndex--) {
                 User activeUser = activePlayers.get(i);
-                PlayerUI playerUI = players.get(uiIndex);
+                PlayerUI playerUI = players.get(uiIndex % players.size());
                 playerUI.container.setVisible(true);
                 playerUI.username.setText(activeUser.getUsername());
             }

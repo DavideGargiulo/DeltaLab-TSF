@@ -248,9 +248,7 @@ public class MainPageController extends GeneralPageController {
             System.out.println("result: " + response.getResult());
             System.out.println("status: " + response.getStatus());
             System.out.println("message: " + response.getMessage());
-            // System.out.println("\n----------\n");
             System.out.println("content: " + response.getContent() + "\n");
-            // System.out.println("\n----------\n");
 
             ArrayList<User> players = new ArrayList<>();
             ArrayList<User> spectators = new ArrayList<>();
