@@ -22,7 +22,7 @@
 #define JSON_BUFFER_MEDIUM 1024
 #define JSON_BUFFER_LARGE 8192
 
-#define DEFAULT_DB_HOST "db"
+#define DEFAULT_DB_HOST "host.docker.internal"
 #define DEFAULT_DB_NAME "deltalabtsf"
 #define DEFAULT_DB_USER "postgres"
 #define DEFAULT_DB_PASS "admin"
@@ -32,11 +32,6 @@
 #define STATUS_WAITING "waiting"
 #define STATUS_STARTED "started"
 #define STATUS_ACTIVE "active"
-
-#define ROTATION_CLOCKWISE_DB "orario"
-#define ROTATION_COUNTERCLOCKWISE_DB "antiorario"
-#define ROTATION_CLOCKWISE_JSON "clockwise"
-#define ROTATION_COUNTERCLOCKWISE_JSON "counterclockwise"
 
 #define ROTATION_CLOCKWISE_DB "orario"
 #define ROTATION_COUNTERCLOCKWISE_DB "antiorario"
@@ -281,7 +276,7 @@ char* getLobbyById(const char* id) {
 
   const char* lobbyId = getSafeValue(res, 0, colId, "");
   const char* users = getSafeValue(res, 0, colUsers, "0");
-  const char* rotation = getSafeValue(res, 0, colRotation, ROTATION_CLOCKWISE_DB);
+  const char* rotation = getSafeValue(res, 0, colRotation, ROTATION_COUNTERCLOCKWISE_JSON);
   const char* creator = getSafeValue(res, 0, colCreator, "");
   const char* isPrivate = getSafeValue(res, 0, colPrivate, "f");
   const char* status = getSafeValue(res, 0, colStatus, STATUS_WAITING);
