@@ -39,4 +39,12 @@ public class CurrentLobby extends Lobby {
     return spectators;
   }
 
+  public void setPlayers(ArrayList<User> playingUsers) {
+    this.playingUsers = playingUsers;
+  }
+
+  public void setSpectators(ArrayList<User> spectators) {
+    this.spectators = spectators;
+  }
+
 }

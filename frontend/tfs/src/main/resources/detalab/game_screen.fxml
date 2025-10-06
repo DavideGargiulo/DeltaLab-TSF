@@ -33,17 +33,7 @@
             <!-- Giocatori in cerchio -->
             <Pane fx:id="playersPane">
                 <!-- Player 1 - Top Center -->
-                <VBox fx:id="player4" alignment="CENTER" layoutX="460.0" layoutY="20" styleClass="player-box">
-                    <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
-                        <image>
-                            <Image url="@../imgs/user.png" />
-                        </image>
-                    </ImageView>
-                    <Label fx:id="username4" styleClass="player-name" text="username4" />
-                </VBox>
-
-                <!-- Player 2 - Top Right -->
-                <VBox fx:id="player5" alignment="CENTER" layoutX="680.0" layoutY="70" styleClass="player-box">
+                <VBox fx:id="player5" alignment="CENTER" layoutX="460.0" layoutY="20" styleClass="player-box">
                     <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
                         <image>
                             <Image url="@../imgs/user.png" />
@@ -52,8 +42,8 @@
                     <Label fx:id="username5" styleClass="player-name" text="username5" />
                 </VBox>
 
-                <!-- Player 3 - Middle Right -->
-                <VBox fx:id="player6" alignment="CENTER" layoutX="770" layoutY="230" styleClass="player-box">
+                <!-- Player 2 - Top Right -->
+                <VBox fx:id="player6" alignment="CENTER" layoutX="680.0" layoutY="70" styleClass="player-box">
                     <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
                         <image>
                             <Image url="@../imgs/user.png" />
@@ -62,8 +52,8 @@
                     <Label fx:id="username6" styleClass="player-name" text="username6" />
                 </VBox>
 
-                <!-- Player 4 - Bottom Right -->
-                <VBox fx:id="player7" alignment="CENTER" layoutX="680" layoutY="390" styleClass="player-box">
+                <!-- Player 3 - Middle Right -->
+                <VBox fx:id="player7" alignment="CENTER" layoutX="770" layoutY="230" styleClass="player-box">
                     <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
                         <image>
                             <Image url="@../imgs/user.png" />
@@ -72,18 +62,18 @@
                     <Label fx:id="username7" styleClass="player-name" text="username7" />
                 </VBox>
 
-                <!-- Player 5 - Bottom Center -->
-                <VBox fx:id="player0" alignment="CENTER" layoutX="460.0" layoutY="450.0" styleClass="player-box">
+                <!-- Player 4 - Bottom Right -->
+                <VBox fx:id="player8" alignment="CENTER" layoutX="680" layoutY="390" styleClass="player-box">
                     <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
                         <image>
                             <Image url="@../imgs/user.png" />
                         </image>
                     </ImageView>
-                    <Label fx:id="username0" styleClass="player-name" text="username0" />
+                    <Label fx:id="username8" styleClass="player-name" text="username8" />
                 </VBox>
 
-                <!-- Player 6 - Bottom Left -->
-                <VBox fx:id="player1" alignment="CENTER" layoutX="240" layoutY="390" styleClass="player-box">
+                <!-- Player 5 - Bottom Center -->
+                <VBox fx:id="player1" alignment="CENTER" layoutX="460.0" layoutY="450.0" styleClass="player-box">
                     <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
                         <image>
                             <Image url="@../imgs/user.png" />
@@ -92,8 +82,8 @@
                     <Label fx:id="username1" styleClass="player-name" text="username1" />
                 </VBox>
 
-                <!-- Player 7 - Middle Left -->
-                <VBox fx:id="player2" alignment="CENTER" layoutX="150" layoutY="230" styleClass="player-box">
+                <!-- Player 6 - Bottom Left -->
+                <VBox fx:id="player2" alignment="CENTER" layoutX="240" layoutY="390" styleClass="player-box">
                     <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
                         <image>
                             <Image url="@../imgs/user.png" />
@@ -102,14 +92,24 @@
                     <Label fx:id="username2" styleClass="player-name" text="username2" />
                 </VBox>
 
-                <!-- Player 8 - Top Left -->
-                <VBox fx:id="player3" alignment="CENTER" layoutX="240" layoutY="70" styleClass="player-box">
+                <!-- Player 7 - Middle Left -->
+                <VBox fx:id="player3" alignment="CENTER" layoutX="150" layoutY="230" styleClass="player-box">
                     <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
                         <image>
                             <Image url="@../imgs/user.png" />
                         </image>
                     </ImageView>
                     <Label fx:id="username3" styleClass="player-name" text="username3" />
+                </VBox>
+
+                <!-- Player 8 - Top Left -->
+                <VBox fx:id="player4" alignment="CENTER" layoutX="240" layoutY="70" styleClass="player-box">
+                    <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
+                        <image>
+                            <Image url="@../imgs/user.png" />
+                        </image>
+                    </ImageView>
+                    <Label fx:id="username4" styleClass="player-name" text="username4" />
                 </VBox>
 
                 <!-- Frase centrale -->
@@ -129,7 +129,7 @@
     <!-- FOOTER -->
     <bottom>
         <HBox alignment="CENTER" prefHeight="70" spacing="15" styleClass="footer">
-            <TextField fx:id="inputField" prefWidth="600" promptText="input text" styleClass="text-field" />
+            <TextField fx:id="inputField" onAction="#submit" prefWidth="600" promptText="input text" styleClass="text-field" />
             <Button fx:id="submitButton" onAction="#submit" prefHeight="45" prefWidth="100" styleClass="action-button" text="Submit" />
         </HBox>
     </bottom>

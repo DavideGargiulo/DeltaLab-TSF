@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.VBox;
@@ -63,12 +64,6 @@ public class GamePageController extends GeneralPageController {
     private List<PlayerUI> players;
 
     @FXML
-    VBox player0;
-
-    @FXML
-    Label username0;
-
-    @FXML
     VBox player1;
 
     @FXML
@@ -111,6 +106,12 @@ public class GamePageController extends GeneralPageController {
     Label username7;
 
     @FXML
+    VBox player8;
+
+    @FXML
+    Label username8;
+
+    @FXML
     private void submit() {
         String inputText = inputField.getText().trim();
 
@@ -150,8 +151,6 @@ public class GamePageController extends GeneralPageController {
     }
 
     private void translateUI() {
-
-        username0.setText(LoggedUser.getInstance().getUsername());
 
         // Translate UI elements
 
@@ -211,18 +210,68 @@ public class GamePageController extends GeneralPageController {
         }
     }
 
+    private void addPlayerToUI(User newPlayer) {
+        if (lobby.getLobbyRotation().equals("orario")) {
+            // TODO: fix difference between orario and clockwise
+            for (int uiIndex = 0; uiIndex < players.size(); uiIndex++) {
+                PlayerUI playerUI = players.get(uiIndex);
+                if (!playerUI.container.isVisible()) {
+                    playerUI.container.setVisible(true);
+                    playerUI.username.setText(newPlayer.getUsername());
+                    break;
+                }
+            }
+        } else {
+            for (int uiIndex = players.size() - 1; uiIndex >= 0; uiIndex--) {
+                PlayerUI playerUI = players.get(uiIndex);
+                if (!playerUI.container.isVisible()) {
+                    playerUI.container.setVisible(true);
+                    playerUI.username.setText(newPlayer.getUsername());
+                    break;
+                }
+            }
+        }
+    }
 
     // Configura tutti gli handler per i messaggi WebSocket
     private void setupWebSocketHandlers() {
 
-        // TODO: implement all handlers
+        lobby = CurrentLobby.getInstance();
 
+        // Handler per nuovo giocatore
+        client.onMessageType("player_joined", msg -> {
+
+            ArrayList<User> activePlayers = lobby.getPlayers();
+            int playerId = Integer.parseInt(msg.optString("playerId"));
+            User newPlayer;
+
+            if (activePlayers.size() <= 8) {
+                newPlayer = new User(playerId, msg.optString("username"), "active");
+                activePlayers.add(newPlayer);
+                lobby.setPlayers(activePlayers);
+                Platform.runLater(() -> {
+                    addPlayerToUI(newPlayer);
+                    updatePlayersCount();
+                });
+            }
+            else {
+                newPlayer = new User(playerId, msg.optString("username"), "waiting");
+                ArrayList<User> waitingPlayers = lobby.getSpectators();
+                waitingPlayers.add(newPlayer);
+                lobby.setSpectators(waitingPlayers);
+                Platform.runLater(() -> {
+                    waitingList.getItems().add(newPlayer.getUsername());
+                });
+            }
+
+        });
 
     }
 
     //Aggiorna il contatore dei giocatori con formato n/max
-    private void updatePlayersCount(int totalPlayers) {
-        playingCount.setText(totalPlayers + "/8");
+    private void updatePlayersCount() {
+        CurrentLobby lobby = CurrentLobby.getInstance();
+        playingCount.setText(lobby.getPlayers().size() + "/8");
     }
 
     private void loadPlayers() {
@@ -240,34 +289,44 @@ public class GamePageController extends GeneralPageController {
         // }
         // System.out.println("\n----------\n");
 
-        // TODO: fix this workaround
-        if (!activePlayers.get(0).getUsername().equals(LoggedUser.getInstance().getUsername())) {
-            if (lobby.getLobbyRotation().equals("orario")) {
-                // TODO: fix difference between orario and clockwise
-                for (int i = activePlayers.size() - 1, uiIndex = players.size() - 1; i >= 0 && uiIndex >= 0; i--, uiIndex--) {
-                    User activeUser = activePlayers.get(i);
-                    PlayerUI playerUI = players.get(uiIndex);
-                    playerUI.container.setVisible(true);
-                    playerUI.username.setText(activeUser.getUsername());
-                }
-
-            } else {
-
-                for (int i = activePlayers.size() - 1, uiIndex = 0; i >= 0 && uiIndex < players.size(); i--, uiIndex++) {
-                    User activeUser = activePlayers.get(i);
-                    PlayerUI playerUI = players.get(uiIndex);
-                    playerUI.container.setVisible(true);
-                    playerUI.username.setText(activeUser.getUsername());
-                }
-
+        if (lobby.getPlayers().size() <= 8) {
+            if(!activePlayers.get(0).getUsername().equals(LoggedUser.getInstance().getUsername())){
+                activePlayers.add(LoggedUser.getInstance());
             }
+            LoggedUser.getInstance().setStatus("active");
+            lobby.setPlayers(activePlayers);
+        } else {
+            LoggedUser.getInstance().setStatus("waiting");
+            waitingPlayers.add(LoggedUser.getInstance());
+            lobby.setSpectators(waitingPlayers);
+        }
+
+
+        if (lobby.getLobbyRotation().equals("orario")) {
+            // TODO: fix difference between orario and clockwise
+            for (int i = activePlayers.size() - 1, uiIndex = players.size() - 1; i >= 0 && uiIndex >= 0; i--, uiIndex--) {
+                User activeUser = activePlayers.get(i);
+                PlayerUI playerUI = players.get(uiIndex);
+                playerUI.container.setVisible(true);
+                playerUI.username.setText(activeUser.getUsername());
+            }
+
+        } else {
+
+            for (int i = activePlayers.size() - 1, uiIndex = 0; i >= 0 && uiIndex < players.size(); i--, uiIndex++) {
+                User activeUser = activePlayers.get(i);
+                PlayerUI playerUI = players.get(uiIndex);
+                playerUI.container.setVisible(true);
+                playerUI.username.setText(activeUser.getUsername());
+            }
+
         }
 
         for (User player : waitingPlayers) {
             waitingList.getItems().add(player.getUsername());
         }
 
-        updatePlayersCount(activePlayers.size());
+        updatePlayersCount();
     }
 
 
@@ -283,7 +342,8 @@ public class GamePageController extends GeneralPageController {
             new PlayerUI(player4, username4),
             new PlayerUI(player5, username5),
             new PlayerUI(player6, username6),
-            new PlayerUI(player7, username7)
+            new PlayerUI(player7, username7),
+            new PlayerUI(player8, username8)
         );
 
         setItemsNotVisible();
