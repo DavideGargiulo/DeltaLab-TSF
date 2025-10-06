@@ -10,11 +10,13 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.VBox;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
 import detalab.DTO.CurrentLobby;
 import detalab.DTO.LanguageHelper;
 import detalab.DTO.LobbyWebSocketClient;
 import detalab.DTO.LoggedUser;
+import detalab.DTO.User;
 import detalab.App;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -44,6 +46,9 @@ public class GamePageController extends GeneralPageController {
 
     @FXML
     Label phraseLabel;
+
+    @FXML
+    ListView<String> waitingList;
 
     private class PlayerUI {
         VBox container;
@@ -220,6 +225,51 @@ public class GamePageController extends GeneralPageController {
         playingCount.setText(totalPlayers + "/8");
     }
 
+    private void loadPlayers() {
+        CurrentLobby lobby = CurrentLobby.getInstance();
+
+        ArrayList<User> activePlayers = lobby.getPlayers();
+        ArrayList<User> waitingPlayers = lobby.getSpectators();
+
+        System.out.println("Rotation: " + lobby.getLobbyRotation());
+
+        // System.out.println("\n----------\n");
+        // System.out.println("Active Players:");
+        // for (User activeUser : activePlayers) {
+        //     System.out.println(activeUser.getUsername());
+        // }
+        // System.out.println("\n----------\n");
+
+        // TODO: fix this workaround
+        if (!activePlayers.get(0).getUsername().equals(LoggedUser.getInstance().getUsername())) {
+            if (lobby.getLobbyRotation().equals("orario")) {
+                // TODO: fix difference between orario and clockwise
+                for (int i = activePlayers.size() - 1, uiIndex = players.size() - 1; i >= 0 && uiIndex >= 0; i--, uiIndex--) {
+                    User activeUser = activePlayers.get(i);
+                    PlayerUI playerUI = players.get(uiIndex);
+                    playerUI.container.setVisible(true);
+                    playerUI.username.setText(activeUser.getUsername());
+                }
+
+            } else {
+
+                for (int i = activePlayers.size() - 1, uiIndex = 0; i >= 0 && uiIndex < players.size(); i--, uiIndex++) {
+                    User activeUser = activePlayers.get(i);
+                    PlayerUI playerUI = players.get(uiIndex);
+                    playerUI.container.setVisible(true);
+                    playerUI.username.setText(activeUser.getUsername());
+                }
+
+            }
+        }
+
+        for (User player : waitingPlayers) {
+            waitingList.getItems().add(player.getUsername());
+        }
+
+        updatePlayersCount(activePlayers.size());
+    }
+
 
     @FXML
     public void initialize() {
@@ -237,6 +287,8 @@ public class GamePageController extends GeneralPageController {
         );
 
         setItemsNotVisible();
+
+        loadPlayers();
 
         try {
             client.connectBlocking();

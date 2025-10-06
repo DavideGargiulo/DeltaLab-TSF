@@ -31,4 +31,12 @@ public class CurrentLobby extends Lobby {
     instance = null;
   }
 
+  public ArrayList<User> getPlayers() {
+    return playingUsers;
+  }
+
+  public ArrayList<User> getSpectators() {
+    return spectators;
+  }
+
 }

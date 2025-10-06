@@ -242,7 +242,41 @@ public class MainPageController extends GeneralPageController {
     private void enterLobby(Lobby lobby){
 
         try {
-            CurrentLobby.getInstance(lobby, new ArrayList<User>(), new ArrayList<User>());
+
+            Response response = makeRequest("lobby/" + lobby.getLobbyID() + "/players", "GET", 200);
+
+            System.out.println("result: " + response.getResult());
+            System.out.println("status: " + response.getStatus());
+            System.out.println("message: " + response.getMessage());
+            // System.out.println("\n----------\n");
+            System.out.println("content: " + response.getContent() + "\n");
+            // System.out.println("\n----------\n");
+
+            ArrayList<User> players = new ArrayList<>();
+            ArrayList<User> spectators = new ArrayList<>();
+
+            JSONObject content = new JSONObject(response.getContent());
+
+            JSONArray activePlayers = content.getJSONArray("activePlayers");
+            for (int i = 0; i < activePlayers.length(); i++) {
+                JSONObject playerObj = activePlayers.getJSONObject(i);
+
+                User user = new User(playerObj.getInt("id"), playerObj.getString("nickname"), playerObj.getString("status"));
+
+                players.add(user);
+            }
+
+            // Estrazione array waitingPlayers
+            JSONArray waitingPlayers = content.getJSONArray("waitingPlayers");
+            for (int i = 0; i < waitingPlayers.length(); i++) {
+                JSONObject playerObj = waitingPlayers.getJSONObject(i);
+
+                User user = new User(playerObj.getInt("id"), playerObj.getString("nickname"), playerObj.getString("status"));
+
+                spectators.add(user);
+            }
+
+            CurrentLobby.getInstance(lobby, players, spectators);
             App.setRoot("game_screen");
         } catch (Exception e) {
             e.printStackTrace();
