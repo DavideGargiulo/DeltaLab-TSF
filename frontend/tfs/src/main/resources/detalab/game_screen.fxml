@@ -12,6 +12,7 @@
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.Circle?>
 
 <BorderPane id="gamePage" fx:id="gamePage" minHeight="700" minWidth="1200" prefHeight="700" prefWidth="1200" stylesheets="@game_screen.css" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="detalab.Controller.GamePageController">
 
@@ -33,84 +34,108 @@
             <!-- Giocatori in cerchio -->
             <Pane fx:id="playersPane">
                 <!-- Player 1 - Top Center -->
-                <VBox fx:id="player5" alignment="CENTER" layoutX="460.0" layoutY="20" styleClass="player-box">
-                    <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
-                        <image>
-                            <Image url="@../imgs/user.png" />
-                        </image>
-                    </ImageView>
-                    <Label fx:id="username5" styleClass="player-name" text="username5" />
-                </VBox>
+                <StackPane fx:id="player5Container" layoutX="460.0" layoutY="20">
+                    <Circle fx:id="glow5" radius="50" styleClass="player-glow" visible="false" />
+                    <VBox fx:id="player5" alignment="CENTER" styleClass="player-box">
+                        <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
+                            <image>
+                                <Image url="@../imgs/user.png" />
+                            </image>
+                        </ImageView>
+                        <Label fx:id="username5" styleClass="player-name" text="username5" />
+                    </VBox>
+                </StackPane>
 
                 <!-- Player 2 - Top Right -->
-                <VBox fx:id="player6" alignment="CENTER" layoutX="680.0" layoutY="70" styleClass="player-box">
-                    <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
-                        <image>
-                            <Image url="@../imgs/user.png" />
-                        </image>
-                    </ImageView>
-                    <Label fx:id="username6" styleClass="player-name" text="username6" />
-                </VBox>
+                <StackPane fx:id="player6Container" layoutX="680.0" layoutY="70">
+                    <Circle fx:id="glow6" radius="50" styleClass="player-glow" visible="false" />
+                    <VBox fx:id="player6" alignment="CENTER" styleClass="player-box">
+                        <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
+                            <image>
+                                <Image url="@../imgs/user.png" />
+                            </image>
+                        </ImageView>
+                        <Label fx:id="username6" styleClass="player-name" text="username6" />
+                    </VBox>
+                </StackPane>
 
                 <!-- Player 3 - Middle Right -->
-                <VBox fx:id="player7" alignment="CENTER" layoutX="770" layoutY="230" styleClass="player-box">
-                    <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
-                        <image>
-                            <Image url="@../imgs/user.png" />
-                        </image>
-                    </ImageView>
-                    <Label fx:id="username7" styleClass="player-name" text="username7" />
-                </VBox>
+                <StackPane fx:id="player7Container" layoutX="770" layoutY="230">
+                    <Circle fx:id="glow7" radius="50" styleClass="player-glow" visible="false" />
+                    <VBox fx:id="player7" alignment="CENTER" styleClass="player-box">
+                        <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
+                            <image>
+                                <Image url="@../imgs/user.png" />
+                            </image>
+                        </ImageView>
+                        <Label fx:id="username7" styleClass="player-name" text="username7" />
+                    </VBox>
+                </StackPane>
 
                 <!-- Player 4 - Bottom Right -->
-                <VBox fx:id="player8" alignment="CENTER" layoutX="680" layoutY="390" styleClass="player-box">
-                    <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
-                        <image>
-                            <Image url="@../imgs/user.png" />
-                        </image>
-                    </ImageView>
-                    <Label fx:id="username8" styleClass="player-name" text="username8" />
-                </VBox>
+                <StackPane fx:id="player8Container" layoutX="680" layoutY="390">
+                    <Circle fx:id="glow8" radius="50" styleClass="player-glow" visible="false" />
+                    <VBox fx:id="player8" alignment="CENTER" styleClass="player-box">
+                        <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
+                            <image>
+                                <Image url="@../imgs/user.png" />
+                            </image>
+                        </ImageView>
+                        <Label fx:id="username8" styleClass="player-name" text="username8" />
+                    </VBox>
+                </StackPane>
 
                 <!-- Player 5 - Bottom Center -->
-                <VBox fx:id="player1" alignment="CENTER" layoutX="460.0" layoutY="450.0" styleClass="player-box">
-                    <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
-                        <image>
-                            <Image url="@../imgs/user.png" />
-                        </image>
-                    </ImageView>
-                    <Label fx:id="username1" styleClass="player-name" text="username1" />
-                </VBox>
+                <StackPane fx:id="player1Container" layoutX="460.0" layoutY="450.0">
+                    <Circle fx:id="glow1" radius="50" styleClass="player-glow" visible="false" />
+                    <VBox fx:id="player1" alignment="CENTER" styleClass="player-box">
+                        <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
+                            <image>
+                                <Image url="@../imgs/user.png" />
+                            </image>
+                        </ImageView>
+                        <Label fx:id="username1" styleClass="player-name" text="username1" />
+                    </VBox>
+                </StackPane>
 
                 <!-- Player 6 - Bottom Left -->
-                <VBox fx:id="player2" alignment="CENTER" layoutX="240" layoutY="390" styleClass="player-box">
-                    <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
-                        <image>
-                            <Image url="@../imgs/user.png" />
-                        </image>
-                    </ImageView>
-                    <Label fx:id="username2" styleClass="player-name" text="username2" />
-                </VBox>
+                <StackPane fx:id="player2Container" layoutX="240" layoutY="390">
+                    <Circle fx:id="glow2" radius="50" styleClass="player-glow" visible="false" />
+                    <VBox fx:id="player2" alignment="CENTER" styleClass="player-box">
+                        <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
+                            <image>
+                                <Image url="@../imgs/user.png" />
+                            </image>
+                        </ImageView>
+                        <Label fx:id="username2" styleClass="player-name" text="username2" />
+                    </VBox>
+                </StackPane>
 
                 <!-- Player 7 - Middle Left -->
-                <VBox fx:id="player3" alignment="CENTER" layoutX="150" layoutY="230" styleClass="player-box">
-                    <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
-                        <image>
-                            <Image url="@../imgs/user.png" />
-                        </image>
-                    </ImageView>
-                    <Label fx:id="username3" styleClass="player-name" text="username3" />
-                </VBox>
+                <StackPane fx:id="player3Container" layoutX="150" layoutY="230">
+                    <Circle fx:id="glow3" radius="50" styleClass="player-glow" visible="false" />
+                    <VBox fx:id="player3" alignment="CENTER" styleClass="player-box">
+                        <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
+                            <image>
+                                <Image url="@../imgs/user.png" />
+                            </image>
+                        </ImageView>
+                        <Label fx:id="username3" styleClass="player-name" text="username3" />
+                    </VBox>
+                </StackPane>
 
                 <!-- Player 8 - Top Left -->
-                <VBox fx:id="player4" alignment="CENTER" layoutX="240" layoutY="70" styleClass="player-box">
-                    <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
-                        <image>
-                            <Image url="@../imgs/user.png" />
-                        </image>
-                    </ImageView>
-                    <Label fx:id="username4" styleClass="player-name" text="username4" />
-                </VBox>
+                <StackPane fx:id="player4Container" layoutX="240" layoutY="70">
+                    <Circle fx:id="glow4" radius="50" styleClass="player-glow" visible="false" />
+                    <VBox fx:id="player4" alignment="CENTER" styleClass="player-box">
+                        <ImageView fitHeight="70" fitWidth="70" preserveRatio="true">
+                            <image>
+                                <Image url="@../imgs/user.png" />
+                            </image>
+                        </ImageView>
+                        <Label fx:id="username4" styleClass="player-name" text="username4" />
+                    </VBox>
+                </StackPane>
 
                 <!-- Frase centrale -->
                 <Label fx:id="phraseLabel" alignment="CENTER" layoutX="360.0" layoutY="260.0" prefWidth="280" styleClass="phrase-label" text="phrase ........" />

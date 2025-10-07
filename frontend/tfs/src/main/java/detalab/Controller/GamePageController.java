@@ -9,6 +9,7 @@ import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.VBox;
+import javafx.scene.shape.Circle;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
@@ -52,10 +53,12 @@ public class GamePageController extends GeneralPageController {
   private class PlayerUI {
     VBox container;
     Label username;
+    Circle glow;
 
-    PlayerUI(VBox container, Label username) {
+    PlayerUI(VBox container, Label username, Circle glow) {
       this.container = container;
       this.username = username;
+      this.glow = glow;
     }
   }
 
@@ -68,10 +71,16 @@ public class GamePageController extends GeneralPageController {
   Label username1;
 
   @FXML
+  Circle glow1;
+
+  @FXML
   VBox player2;
 
   @FXML
   Label username2;
+
+  @FXML
+  Circle glow2;
 
   @FXML
   VBox player3;
@@ -80,10 +89,16 @@ public class GamePageController extends GeneralPageController {
   Label username3;
 
   @FXML
+  Circle glow3;
+
+  @FXML
   VBox player4;
 
   @FXML
   Label username4;
+
+  @FXML
+  Circle glow4;
 
   @FXML
   VBox player5;
@@ -92,10 +107,16 @@ public class GamePageController extends GeneralPageController {
   Label username5;
 
   @FXML
+  Circle glow5;
+
+  @FXML
   VBox player6;
 
   @FXML
   Label username6;
+
+  @FXML
+  Circle glow6;
 
   @FXML
   VBox player7;
@@ -104,21 +125,29 @@ public class GamePageController extends GeneralPageController {
   Label username7;
 
   @FXML
+  Circle glow7;
+
+  @FXML
   VBox player8;
 
   @FXML
   Label username8;
 
   @FXML
+  Circle glow8;
+
+  @FXML
   private void submit() {
+    String message = phraseLabel.getText().trim();
     String inputText = inputField.getText().trim();
 
     try {
       if (inputText.isEmpty()) {
         throw new IllegalArgumentException("Input text cannot be empty.");
       }
-      client.sendChatMessage(inputText).get();
+      client.sendChatMessage(LanguageHelper.translateToEnglish(message + " " + inputText)).get();
       inputField.clear();
+      phraseLabel.setText("");
     } catch (Exception e) {
       showAlert(AlertType.ERROR, "Invalid Input", "Please enter a valid text.", e.getMessage());
       inputField.clear();
@@ -154,7 +183,7 @@ public class GamePageController extends GeneralPageController {
 
     try {
 
-      String translatedText = LanguageHelper.translate("In Game;Waiting;Exit;Code;Text;Send");
+      String translatedText = LanguageHelper.translateToNative("In Game;Waiting;Exit;Code;Text;Send");
 
       List<String> translatedStrings = new ArrayList<>();
       for (String str : translatedText.split("\\;")) {
@@ -190,7 +219,7 @@ public class GamePageController extends GeneralPageController {
     for (PlayerUI player : players) {
       player.container.setVisible(false);
     }
-    phraseLabel.setVisible(false);
+    phraseLabel.setText("");
   }
 
   CurrentLobby lobby = CurrentLobby.getInstance();
@@ -305,6 +334,36 @@ public class GamePageController extends GeneralPageController {
 
     });
 
+    // Handler per ricevere messaggio
+    client.onMessageType("chat", msg -> {
+
+      System.out.printf("[CHAT] %s: %s (Next: %s)%n", msg.optString("username"), msg.optString("text"),
+          msg.optString("nextPlayerId"));
+
+      int id = Integer.parseInt(msg.optString("nextPlayerId"));
+
+      Platform.runLater(() -> {
+        highlightPlayer(id);
+      });
+
+      if (id == LoggedUser.getInstance().getId()) {
+        String message = msg.optString("text");
+        Platform.runLater(() -> {
+          try {
+            phraseLabel.setText(LanguageHelper.translateToNative(message));
+          } catch (Exception e) {
+            phraseLabel.setText(message);
+            e.printStackTrace();
+            showAlert(AlertType.ERROR, "Error", "An error occurred.", "Unable to translate!");
+          }
+          // TODO: Uncomment
+          // inputField.setVisible(true);
+          // submitButton.setVisible(true);
+        });
+      }
+
+    });
+
   }
 
   private void reloadPlayersUI() {
@@ -313,8 +372,8 @@ public class GamePageController extends GeneralPageController {
     ArrayList<User> activePlayers = lobby.getPlayers();
     int myPosition = getMyPositionInActivePlayers();
 
-    if (lobby.getLobbyRotation().equals("clockwise")) {
-      if (myPosition != -1) {
+    if (myPosition != -1) {
+      if (lobby.getLobbyRotation().equals("clockwise")) {
         for (int i = 0, uiIndex = 8 - myPosition; i < activePlayers.size(); i++, uiIndex++) {
           User activeUser = activePlayers.get(i);
           PlayerUI playerUI = players.get(uiIndex % players.size());
@@ -322,18 +381,25 @@ public class GamePageController extends GeneralPageController {
           playerUI.username.setText(activeUser.getUsername());
         }
       } else {
-        for (int i = 0; i < activePlayers.size(); i++) {
-          User activeUser = activePlayers.get(i);
-          PlayerUI playerUI = players.get(i);
-          playerUI.container.setVisible(true);
-          playerUI.username.setText(activeUser.getUsername());
+        if (myPosition != -1) {
+          for (int i = 0, uiIndex = 8 + myPosition; i < activePlayers.size(); i++, uiIndex--) {
+            User activeUser = activePlayers.get(i);
+            PlayerUI playerUI = players.get(uiIndex % players.size());
+            playerUI.container.setVisible(true);
+            playerUI.username.setText(activeUser.getUsername());
+          }
         }
       }
     } else {
-      if (myPosition != -1) {
-        for (int i = 0, uiIndex = 8 + myPosition; i < activePlayers.size(); i++, uiIndex--) {
+      ArrayList<User> waitingPlayers = lobby.getSpectators();
+      waitingList.getItems().clear();
+      for (User waitingUser : waitingPlayers) {
+        waitingList.getItems().add(waitingUser.getUsername());
+      }
+      if (lobby.getLobbyRotation().equals("clockwise")) {
+        for (int i = 0; i < activePlayers.size(); i++) {
           User activeUser = activePlayers.get(i);
-          PlayerUI playerUI = players.get(uiIndex % players.size());
+          PlayerUI playerUI = players.get(i);
           playerUI.container.setVisible(true);
           playerUI.username.setText(activeUser.getUsername());
         }
@@ -343,7 +409,6 @@ public class GamePageController extends GeneralPageController {
           PlayerUI playerUI = players.get(uiIndex % players.size());
           playerUI.container.setVisible(true);
           playerUI.username.setText(activeUser.getUsername());
-
         }
       }
     }
@@ -373,7 +438,7 @@ public class GamePageController extends GeneralPageController {
     ArrayList<User> activePlayers = lobby.getPlayers();
     ArrayList<User> waitingPlayers = lobby.getSpectators();
 
-    if (lobby.getPlayers().size() <= 8) {
+    if (lobby.getPlayers().size() < 8) {
       if (!activePlayers.get(0).getUsername().equals(LoggedUser.getInstance().getUsername())) {
         activePlayers.add(LoggedUser.getInstance());
       }
@@ -388,16 +453,67 @@ public class GamePageController extends GeneralPageController {
     reloadPlayersUI();
   }
 
+  private void highlightPlayer(int id) {
+
+    for (PlayerUI player : players) {
+      player.glow.setVisible(false);
+    }
+
+    int myPosition = getMyPositionInActivePlayers();
+    ArrayList<User> activePlayers = lobby.getPlayers();
+
+    if (myPosition != -1) {
+      if (lobby.getLobbyRotation().equals("clockwise")) {
+        for (int i = 0, uiIndex = 8 - myPosition; i < activePlayers.size(); i++, uiIndex++) {
+          if (activePlayers.get(i).getId() == id) {
+            players.get(uiIndex % players.size()).glow.setVisible(true);
+            break;
+          }
+        }
+      } else {
+        if (myPosition != -1) {
+          for (int i = 0, uiIndex = 8 + myPosition; i < activePlayers.size(); i++, uiIndex--) {
+            if (activePlayers.get(i).getId() == id) {
+              players.get(uiIndex % players.size()).glow.setVisible(true);
+              break;
+            }
+          }
+        }
+      }
+    } else {
+      if (lobby.getLobbyRotation().equals("clockwise")) {
+        for (int i = 0; i < activePlayers.size(); i++) {
+          if (activePlayers.get(i).getId() == id) {
+            players.get(i).glow.setVisible(true);
+            break;
+          }
+        }
+      } else {
+        for (int i = 0, uiIndex = 8; i < activePlayers.size(); i++, uiIndex--) {
+          if (activePlayers.get(i).getId() == id) {
+            players.get(uiIndex % players.size()).glow.setVisible(true);
+            break;
+          }
+        }
+      }
+    }
+  }
+
   @FXML
   public void initialize() {
 
     translateUI();
 
-    players = Arrays.<PlayerUI>asList(new PlayerUI(player1, username1), new PlayerUI(player2, username2),
-        new PlayerUI(player3, username3), new PlayerUI(player4, username4), new PlayerUI(player5, username5),
-        new PlayerUI(player6, username6), new PlayerUI(player7, username7), new PlayerUI(player8, username8));
+    players = Arrays.<PlayerUI>asList(new PlayerUI(player1, username1, glow1), new PlayerUI(player2, username2, glow2),
+        new PlayerUI(player3, username3, glow3), new PlayerUI(player4, username4, glow4),
+        new PlayerUI(player5, username5, glow5), new PlayerUI(player6, username6, glow6),
+        new PlayerUI(player7, username7, glow7), new PlayerUI(player8, username8, glow8));
 
     setItemsNotVisible();
+
+    // TODO: Uncomment
+    // inputField.setVisible(false);
+    // submitButton.setVisible(false);
 
     loadPlayers();
 

@@ -285,7 +285,7 @@ public class MainPageController extends GeneralPageController {
 
     try {
 
-      String translatedText = LanguageHelper.translate(
+      String translatedText = LanguageHelper.translateToNative(
           "Welcome. Create Lobby, Franwik!. Quick Match. Join Lobby. Logout. Update the table, Franwik!. Code. Connected Users. Rotation. Creator. Status. Lobby Code.");
 
       for (String str : translatedText.split("\\.")) {

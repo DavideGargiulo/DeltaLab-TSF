@@ -63,10 +63,7 @@ public class LanguageHelper extends GeneralPageController {
         .findFirst().orElse(null);
   }
 
-  public static String translate(String text) throws IOException {
-
-    String target = LoggedUser.getInstance().getLanguage();
-    String source = "en"; // Lingua di partenza (inglese)
+  private static String translate(String text, String source, String target) throws IOException {
 
     if (source.equals(target)) {
       return text; // Nessuna traduzione necessaria
@@ -110,6 +107,18 @@ public class LanguageHelper extends GeneralPageController {
     JSONObject json = new JSONObject(responseBody);
 
     return json.getString("translatedText");
+  }
+
+  public static String translateToNative(String text) throws IOException {
+    String source = "en";
+    String target = LoggedUser.getInstance().getLanguage();
+    return translate(text, source, target);
+  }
+
+  public static String translateToEnglish(String text) throws IOException {
+    String source = LoggedUser.getInstance().getLanguage();
+    String target = "en";
+    return translate(text, source, target);
   }
 
 }

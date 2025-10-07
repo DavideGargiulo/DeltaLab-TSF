@@ -121,7 +121,7 @@ public class CreateLobbyDialogController extends GeneralPageController {
     try {
 
       String translatedText = LanguageHelper
-          .translate("Rotation. Private. Create Lobby, Franwik!. Cancel. Spin clockwise. Spin counterclockwise.");
+          .translateToNative("Rotation. Private. Create Lobby, Franwik!. Cancel. Spin clockwise. Spin counterclockwise.");
       List<String> translatedStrings = new ArrayList<>();
 
       for (String str : translatedText.split("\\.")) {

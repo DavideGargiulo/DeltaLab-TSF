@@ -39,6 +39,7 @@
 .waiting-list .list-cell {
     -fx-background-color: transparent;
     -fx-text-fill: white;
+    -fx-alignment: center;
 }
 
 /* TextField input */
@@ -79,6 +80,20 @@
 .player-name {
     -fx-text-fill: white;
     -fx-font-size: 14px
+}
+
+/* Glow effect per il giocatore attivo */
+.player-glow {
+    -fx-fill: transparent;
+    -fx-stroke: #42a5f5;
+    -fx-stroke-width: 3;
+    -fx-effect: dropshadow(gaussian, #42a5f5, 20, 0.7, 0, 0);
+}
+
+/* Classe per il giocatore attivo - da applicare via Java */
+.active-player {
+    -fx-scale-x: 1.1;
+    -fx-scale-y: 1.1;
 }
 
 .phrase-label {
