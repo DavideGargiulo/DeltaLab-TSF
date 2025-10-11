@@ -989,3 +989,158 @@ char* leaveLobby(const char* lobbyId, int playerId) {
   dbDisconnect(conn);
   return createJsonSuccess("Giocatore rimosso con successo", NULL);
 }
+
+char* startGame(const char* lobbyId, int creatorId) {
+  if (!isValidLobbyId(lobbyId)) {
+    return createJsonError("ID lobby non valido");
+  }
+
+  if (!isValidPlayerId(creatorId)) {
+    return createJsonError("ID creatore non valido");
+  }
+
+  DBConnection* conn = connectToDatabase();
+  if (!conn) {
+    return createJsonError("Connessione al database fallita");
+  }
+
+  if (!dbBeginTransaction(conn)) {
+    dbDisconnect(conn);
+    return createJsonError("Errore nella transazione");
+  }
+
+  // Verifica che l'utente sia il creatore
+  const char* checkSql = "SELECT id_accountcreatore, status FROM lobby WHERE id = $1 FOR UPDATE";
+  const char* checkParams[1] = { lobbyId };
+
+  PGresult* checkRes = dbExecutePrepared(conn, checkSql, 1, checkParams);
+  if (!checkRes || PQntuples(checkRes) == 0) {
+    if (checkRes) PQclear(checkRes);
+    dbRollbackTransaction(conn);
+    dbDisconnect(conn);
+    return createJsonError("Lobby non trovata");
+  }
+
+  int dbCreatorId = atoi(PQgetvalue(checkRes, 0, 0));
+  const char* currentStatus = PQgetvalue(checkRes, 0, 1);
+  PQclear(checkRes);
+
+  if (dbCreatorId != creatorId) {
+    dbRollbackTransaction(conn);
+    dbDisconnect(conn);
+    return createJsonError("Solo il creatore può avviare la partita");
+  }
+
+  if (strcmp(currentStatus, STATUS_STARTED) == 0) {
+    dbRollbackTransaction(conn);
+    dbDisconnect(conn);
+    return createJsonError("La partita è già iniziata");
+  }
+
+  // Conta i giocatori attivi
+  const char* countSql = "SELECT COUNT(*) FROM lobby_players WHERE lobby_id = $1 AND status = 'active'";
+  PGresult* countRes = dbExecutePrepared(conn, countSql, 1, checkParams);
+
+  int activeCount = 0;
+  if (countRes && PQntuples(countRes) > 0) {
+    activeCount = atoi(PQgetvalue(countRes, 0, 0));
+  }
+  if (countRes) PQclear(countRes);
+
+  if (activeCount < MIN_PLAYERS) {
+    dbRollbackTransaction(conn);
+    dbDisconnect(conn);
+
+    char errorMsg[128];
+    snprintf(errorMsg, sizeof(errorMsg), "Servono almeno %d giocatori per iniziare", MIN_PLAYERS);
+    return createJsonError(errorMsg);
+  }
+
+  const char* updateSql = "UPDATE lobby SET status = $1 WHERE id = $2";
+  const char* updateParams[2] = { STATUS_STARTED, lobbyId };
+
+  PGresult* updateRes = dbExecutePrepared(conn, updateSql, 2, updateParams);
+  if (!updateRes) {
+    dbRollbackTransaction(conn);
+    dbDisconnect(conn);
+    return createJsonError("Errore nell'aggiornamento della lobby");
+  }
+
+  int affected = atoi(PQcmdTuples(updateRes));
+  PQclear(updateRes);
+
+  if (affected == 0) {
+    dbRollbackTransaction(conn);
+    dbDisconnect(conn);
+    return createJsonError("Impossibile avviare la partita");
+  }
+
+  if (!dbCommitTransaction(conn)) {
+    dbDisconnect(conn);
+    return createJsonError("Errore nel commit della transazione");
+  }
+
+  dbDisconnect(conn);
+
+  return createJsonSuccess("Partita avviata con successo", NULL);
+}
+
+char* endGame(const char* lobbyId, int creatorId) {
+  if (!isValidLobbyId(lobbyId)) {
+    return createJsonError("ID lobby non valido");
+  }
+
+  if (!isValidPlayerId(creatorId)) {
+    return createJsonError("ID creatore non valido");
+  }
+
+  DBConnection* conn = connectToDatabase();
+  if (!conn) {
+    return createJsonError("Connessione al database fallita");
+  }
+
+  // Verifica che l'utente sia il creatore
+  const char* checkSql = "SELECT id_accountcreatore, status FROM lobby WHERE id = $1";
+  const char* checkParams[1] = { lobbyId };
+
+  PGresult* checkRes = dbExecutePrepared(conn, checkSql, 1, checkParams);
+  if (!checkRes || PQntuples(checkRes) == 0) {
+    if (checkRes) PQclear(checkRes);
+    dbDisconnect(conn);
+    return createJsonError("Lobby non trovata");
+  }
+
+  int dbCreatorId = atoi(PQgetvalue(checkRes, 0, 0));
+  const char* currentStatus = PQgetvalue(checkRes, 0, 1);
+  PQclear(checkRes);
+
+  if (dbCreatorId != creatorId) {
+    dbDisconnect(conn);
+    return createJsonError("Solo il creatore può terminare la partita");
+  }
+
+  if (strcmp(currentStatus, "finished") == 0) {
+    dbDisconnect(conn);
+    return createJsonError("La partita è già terminata");
+  }
+
+  // Aggiorna status a 'finished'
+  const char* updateSql = "UPDATE lobby SET status = $1 WHERE id = $2";
+  const char* updateParams[2] = { "finished", lobbyId };
+
+  PGresult* updateRes = dbExecutePrepared(conn, updateSql, 2, updateParams);
+  if (!updateRes) {
+    dbDisconnect(conn);
+    return createJsonError("Errore nell'aggiornamento della lobby");
+  }
+
+  int affected = atoi(PQcmdTuples(updateRes));
+  PQclear(updateRes);
+  dbDisconnect(conn);
+
+  if (affected == 0) {
+    return createJsonError("Impossibile terminare la partita");
+  }
+
+  return createJsonSuccess("Partita terminata con successo", NULL);
+}

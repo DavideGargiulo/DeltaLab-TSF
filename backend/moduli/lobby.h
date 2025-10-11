@@ -52,4 +52,10 @@ char* getLobbyPlayers(const char* lobbyId);
 
 char* leaveLobby(const char* lobbyId, int playerId);
 
+char* startGame(const char* lobbyId, int creatorId);
+
+char* endGame(const char* lobbyId, int creatorId);
+
+char* getLobbyRotation(const char* lobbyId);
+
 #endif
