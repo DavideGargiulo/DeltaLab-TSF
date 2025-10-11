@@ -18,3 +18,5 @@ void ws_lobby_notify_all(const char *lobby_id, const char *json);
 // Hook DB: implementali altrove (o lascia gli stub nel .c)
 bool db_on_player_join(const char *lobby_id, int player_id, char **error_msg);
 void db_on_lobby_full(const char *lobby_id, int players_count);
+bool db_on_game_start(const char *lobby_id, int creator_id);
+bool db_on_game_end(const char *lobby_id, int creator_id);

@@ -3,14 +3,23 @@
 #include "../lobby.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include <stdio.h>
 
 // ======= Tipi interni =======
+
+typedef enum {
+  GAME_STATE_LOBBY,
+  GAME_STATE_STARTING,
+  GAME_STATE_PLAYING,
+  GAME_STATE_ENDED
+} GameState;
 
 struct ws_client {
   struct mg_connection *c;
   char player_id[32];
   char username[64];
+  bool has_played;
   struct ws_client *next;
 };
 
@@ -18,6 +27,9 @@ struct lobby_room {
   char id[LOBBY_ID_MAXLEN];
   int max_players;
   int players_count;
+  char creator_id[32];
+  char current_player_id[32];
+  char rotation[16];
   struct ws_client *clients;
   struct lobby_room *next;
 };
@@ -66,6 +78,9 @@ static struct lobby_room *get_or_create_room(const char *lobby_id) {
   r->max_players = LOBBY_MAX_PLAYERS_DEFAULT;
   r->players_count = 0;
   r->clients = NULL;
+  r->creator_id[0] = 0;
+  r->current_player_id[0] = 0;
+  snprintf(r->rotation, sizeof(r->rotation), "orario"); // default
   r->next = s_ws.rooms;
   s_ws.rooms = r;
   return r;
@@ -106,6 +121,19 @@ void ws_lobby_notify_all(const char *lobby_id, const char *json) {
   struct lobby_room *r = find_room(lobby_id);
   if (!r) return;
   room_broadcast(r, json);
+}
+
+static bool is_creator(struct lobby_room *r, const char *player_id) {
+  return r && r->creator_id[0] && strncmp(r->creator_id, player_id, sizeof(r->creator_id)) == 0;
+}
+
+static struct ws_client* find_client_by_id(struct lobby_room *r, const char *player_id) {
+  for (struct ws_client *cl = r->clients; cl; cl = cl->next) {
+    if (strncmp(cl->player_id, player_id, sizeof(cl->player_id)) == 0) {
+      return cl;
+    }
+  }
+  return NULL;
 }
 
 // ======= JSON naive (buf/len) =======
@@ -165,6 +193,10 @@ static void on_ws_close(struct mg_connection *c) {
            "{\"type\":\"player_left\",\"playerId\":\"%s\",\"players\":%d}",
            *st->player_id ? st->player_id : "", r->players_count);
   room_broadcast(r, msg);
+
+  if (is_creator(r, st->player_id)) {
+    r->creator_id[0] = 0;
+  }
 
   delete_room_if_empty(r);
   free(st);
@@ -231,6 +263,11 @@ static void handle_action_join(struct mg_connection *c, struct mg_ws_message *wm
       tail->next = cl;
     }
     r->players_count++;
+
+    // se non c'è ancora un creatore, il primo join diventa creator
+    if (!r->creator_id[0]) {
+      snprintf(r->creator_id, sizeof(r->creator_id), "%s", player_id);
+    }
   } else {
     snprintf(exists->player_id, sizeof(exists->player_id), "%s", player_id);
     snprintf(exists->username, sizeof(exists->username), "%s", username);
@@ -262,13 +299,7 @@ static void get_next_player_id(struct lobby_room *r, const char *current_id,
                                char *out, size_t outlen) {
   if (!r || !r->clients || !out || outlen == 0) { if (out) out[0] = 0; return; }
 
-  struct ws_client *cur = NULL;
-  for (struct ws_client *it = r->clients; it; it = it->next) {
-    if (strncmp(it->player_id, current_id ? current_id : "", sizeof(it->player_id)) == 0) {
-      cur = it;
-      break;
-    }
-  }
+  struct ws_client *cur = find_client_by_id(r, current_id ? current_id : "");
 
   // Se non trovo il corrente, prendo semplicemente la testa
   struct ws_client *next = NULL;
@@ -279,6 +310,25 @@ static void get_next_player_id(struct lobby_room *r, const char *current_id,
   }
 
   snprintf(out, outlen, "%s", next ? next->player_id : "");
+}
+
+static void advance_turn_and_broadcast(struct lobby_room *r) {
+  if (!r || !r->clients) return;
+
+  char next_id[32] = {0};
+  get_next_player_id(r, r->current_player_id, next_id, sizeof(next_id));
+
+  if (next_id[0]) {
+    snprintf(r->current_player_id, sizeof(r->current_player_id), "%s", next_id);
+
+    // Trova il nickname del prossimo giocatore
+    const struct ws_client *next_cl = find_client_by_id(r, next_id);
+    const char *next_username = next_cl ? next_cl->username : "";
+
+    char msg[256];
+    snprintf(msg, sizeof(msg), "{\"type\":\"turn_changed\",\"currentPlayerId\":\"%s\",\"username\":\"%s\"}", next_id, next_username);
+    room_broadcast(r, msg);
+  }
 }
 
 static void handle_action_leave(struct mg_connection *c, struct conn_state *st) {
@@ -340,6 +390,16 @@ static void handle_action_leave(struct mg_connection *c, struct conn_state *st) 
             st->player_id, r->players_count);
     room_broadcast(r, msg);
 
+    // Se il giocatore uscito era il current player, avanza il turno
+    if (r->current_player_id[0] && strncmp(r->current_player_id, st->player_id, sizeof(r->current_player_id)) == 0) {
+      advance_turn_and_broadcast(r);
+    }
+
+    // Se il giocatore uscito era il creatore, azzera il creator_id (DB potrebbe gestire ricreazione)
+    if (is_creator(r, st->player_id)) {
+      r->creator_id[0] = 0;
+    }
+
     delete_room_if_empty(r);
   }
 
@@ -354,24 +414,51 @@ static void handle_action_chat(struct mg_connection *c, struct mg_ws_message *wm
   struct lobby_room *r = find_room(st->lobby_id);
   if (!r) return;
 
+  // Verifica che sia il turno del giocatore
+  if (!r->current_player_id[0] ||
+      strncmp(r->current_player_id, st->player_id, sizeof(r->current_player_id)) != 0) {
+    const char *err = "{\"type\":\"error\",\"message\":\"Non è il tuo turno di scrivere\"}";
+    mg_ws_send(c, err, strlen(err), WEBSOCKET_OP_TEXT);
+    return;
+  }
+
+  // Trova il client che sta scrivendo
+  struct ws_client *writer = NULL;
+  for (struct ws_client *cl = r->clients; cl; cl = cl->next) {
+    if (cl->c == c) {
+      writer = cl;
+      break;
+    }
+  }
+
+  if (!writer) return;
+
+  // Verifica che non abbia già giocato
+  if (writer->has_played) {
+    const char *err = "{\"type\":\"error\",\"message\":\"Hai già scritto la tua parola\"}";
+    mg_ws_send(c, err, strlen(err), WEBSOCKET_OP_TEXT);
+    return;
+  }
+
   char text[512] = {0};
   json_get_str(wm, "text", text, sizeof(text));
 
-  // Calcola il prossimo giocatore
-  char next_id[32] = {0};
-  get_next_player_id(r, st->player_id, next_id, sizeof(next_id));
+  // Marca che questo giocatore ha scritto
+  writer->has_played = true;
 
+  // Broadcast del messaggio
   char msg[900];
-  // Include nextPlayerId nel broadcast
   int n = snprintf(msg, sizeof(msg),
-           "{\"type\":\"chat\",\"playerId\":\"%s\",\"username\":\"%s\",\"text\":\"%s\",\"nextPlayerId\":\"%s\"}",
-           st->player_id, st->username, text, next_id);
+           "{\"type\":\"chat\",\"playerId\":\"%s\",\"username\":\"%s\",\"text\":\"%s\"}",
+           st->player_id, st->username, text);
   if (n < 0) return;
   if ((size_t)n >= sizeof(msg)) msg[sizeof(msg)-1] = '\0';
 
   room_broadcast(r, msg);
-}
 
+  // Avanza automaticamente al prossimo giocatore
+  advance_turn_and_broadcast(r);
+}
 
 static void handle_action_state(struct mg_connection *c, struct conn_state *st) {
   if (!*st->lobby_id) return;
@@ -420,6 +507,81 @@ static void handle_action_setmax(struct mg_connection *c, struct mg_ws_message *
   }
 }
 
+static void handle_action_start(struct mg_connection *c, struct conn_state *st) {
+  if (!*st->lobby_id) return;
+  struct lobby_room *r = find_room(st->lobby_id);
+  if (!r) return;
+
+  // Verifica che sia il creatore
+  if (!is_creator(r, st->player_id)) {
+    const char *err = "{\"type\":\"error\",\"message\":\"Solo il creatore può avviare la partita\"}";
+    mg_ws_send(c, err, strlen(err), WEBSOCKET_OP_TEXT);
+    return;
+  }
+
+  // Verifica numero minimo di giocatori
+  if (r->players_count < 4) {
+    char err[128];
+    snprintf(err, sizeof(err),
+             "{\"type\":\"error\",\"message\":\"Servono almeno 4 giocatori per iniziare\"}");
+    mg_ws_send(c, err, strlen(err), WEBSOCKET_OP_TEXT);
+    return;
+  }
+
+  // Chiama la funzione DB
+  int creator_id = atoi(st->player_id);
+  if (!db_on_game_start(st->lobby_id, creator_id)) {
+    const char *err = "{\"type\":\"error\",\"message\":\"Errore nell'avvio della partita\"}";
+    mg_ws_send(c, err, strlen(err), WEBSOCKET_OP_TEXT);
+    return;
+  }
+
+  // Reset del flag has_played per tutti i giocatori
+  for (struct ws_client *cl = r->clients; cl; cl = cl->next) {
+    cl->has_played = false;
+  }
+
+  // Imposta il primo giocatore (il creatore)
+  snprintf(r->current_player_id, sizeof(r->current_player_id), "%s", st->player_id);
+
+  // Broadcast a tutti che il game è iniziato
+  char msg[256];
+  snprintf(msg, sizeof(msg),
+           "{\"type\":\"game_started\",\"currentPlayerId\":\"%s\",\"username\":\"%s\"}",
+           r->current_player_id, st->username);
+  room_broadcast(r, msg);
+}
+
+static void handle_action_endgame(struct mg_connection *c, struct conn_state *st) {
+  if (!*st->lobby_id) return;
+  struct lobby_room *r = find_room(st->lobby_id);
+  if (!r) return;
+
+  // Verifica che sia il creatore
+  if (!is_creator(r, st->player_id)) {
+    const char *err = "{\"type\":\"error\",\"message\":\"Solo il creatore può terminare la partita\"}";
+    mg_ws_send(c, err, strlen(err), WEBSOCKET_OP_TEXT);
+    return;
+  }
+
+  // Chiama la funzione DB
+  int creator_id = atoi(st->player_id);
+  if (!db_on_game_end(st->lobby_id, creator_id)) {
+    const char *err = "{\"type\":\"error\",\"message\":\"Errore nella terminazione della partita\"}";
+    mg_ws_send(c, err, strlen(err), WEBSOCKET_OP_TEXT);
+    return;
+  }
+
+  // Reset del current player e has_played
+  r->current_player_id[0] = 0;
+  for (struct ws_client *cl = r->clients; cl; cl = cl->next) {
+    cl->has_played = false;
+  }
+
+  // Broadcast a tutti che il game è finito
+  room_broadcast(r, "{\"type\":\"game_ended\",\"message\":\"La partita è terminata\"}");
+}
+
 // ======= Handler WS =======
 
 static void ws_handler(struct mg_connection *c, int ev, void *ev_data) {
@@ -446,6 +608,8 @@ static void ws_handler(struct mg_connection *c, int ev, void *ev_data) {
       else if (json_has(wm, "action", "chat"))   handle_action_chat(c, wm, st);
       else if (json_has(wm, "action", "state"))  handle_action_state(c, st);
       else if (json_has(wm, "action", "setmax")) handle_action_setmax(c, wm, st);
+      else if (json_has(wm, "action", "start")) handle_action_start(c, st);
+      else if (json_has(wm, "action", "end")) handle_action_endgame(c, st);
       else {
         const char *err = "{\"type\":\"error\",\"message\":\"Unknown action\"}";
         mg_ws_send(c, err, strlen(err), WEBSOCKET_OP_TEXT);
@@ -570,6 +734,31 @@ static LeaveResult db_on_player_leave(const char *lobby_id, int player_id) {
   result.success = true;
   free(db_result);
   return result;
+}
+
+bool db_on_game_start(const char *lobby_id, int creator_id) {
+  if (!lobby_id) return false;
+
+  char *result = startGame(lobby_id, creator_id);
+  if (!result) return false;
+
+  // Verifica se il risultato indica successo
+  bool success = (strstr(result, "\"result\":true") != NULL);
+  free(result);
+
+  return success;
+}
+
+bool db_on_game_end(const char *lobby_id, int creator_id) {
+  if (!lobby_id) return false;
+
+  char *result = endGame(lobby_id, creator_id);
+  if (!result) return false;
+
+  bool success = (strstr(result, "\"result\":true") != NULL);
+  free(result);
+
+  return success;
 }
 
 void db_on_lobby_full(const char *lobby_id, int players_count) {
