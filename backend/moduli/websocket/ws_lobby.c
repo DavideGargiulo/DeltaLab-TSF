@@ -349,7 +349,7 @@ static void advance_turn_and_broadcast(struct lobby_room *r) {
     }
 
     char msg[256];
-    sprintf(msg, "{\"type\":\"game_ended\",\"message\":\"La partita è terminata: tutti hanno giocato!\", \"text\":\"%s\"}", text);
+    snprintf(msg, "{\"type\":\"game_ended\",\"message\":\"La partita è terminata: tutti hanno giocato!\", \"text\":\"%s\"}", text);
     room_broadcast(r, msg);
 
     return;
@@ -432,7 +432,13 @@ static void handle_action_leave(struct mg_connection *c, struct conn_state *st) 
       pp = &(*pp)->next;
     }
   } else {
-    // Giocatore normale esce
+    bool was_current_player = (r->current_player_id[0] && strncmp(r->current_player_id, st->player_id, sizeof(r->current_player_id)) == 0);
+
+    char next_player_id[32] = {0};
+    if (was_current_player) {
+      get_next_player_id(r, st->player_id, next_player_id, sizeof(next_player_id));
+    }
+
     remove_client(r, c, st->player_id);
 
     char msg[256];
@@ -441,8 +447,34 @@ static void handle_action_leave(struct mg_connection *c, struct conn_state *st) 
             st->player_id, r->players_count);
     room_broadcast(r, msg);
 
-    if (r->current_player_id[0] && strncmp(r->current_player_id, st->player_id, sizeof(r->current_player_id)) == 0) {
-      advance_turn_and_broadcast(r);
+    // Se era il turno del giocatore che è uscito, avanza al prossimo
+    if (was_current_player) {
+      if (next_player_id[0]) {
+        struct ws_client *next_cl = find_client_by_id(r, next_player_id);
+
+        if (next_cl) {
+          // Imposta il prossimo giocatore
+          snprintf(r->current_player_id, sizeof(r->current_player_id), "%s", next_player_id);
+
+          char turn_msg[256];
+          snprintf(turn_msg, sizeof(turn_msg),
+                   "{\"type\":\"turn_changed\",\"currentPlayerId\":\"%s\",\"username\":\"%s\"}",
+                   next_player_id, next_cl->username);
+          room_broadcast(r, turn_msg);
+        } else {
+          // Non ci sono più giocatori, termina la partita
+          r->current_player_id[0] = 0;
+          if (r->creator_id[0]) {
+            int creator_id = atoi(r->creator_id);
+            db_on_game_end(r->id, creator_id);
+          }
+          room_broadcast(r, "{\"type\":\"game_ended\",\"message\":\"La partita è terminata: nessun giocatore rimasto\"}");
+        }
+      } else {
+        // Nessun prossimo giocatore trovato
+        r->current_player_id[0] = 0;
+        room_broadcast(r, "{\"type\":\"game_ended\",\"message\":\"La partita è terminata\"}");
+      }
     }
 
     if (is_creator(r, st->player_id)) {
