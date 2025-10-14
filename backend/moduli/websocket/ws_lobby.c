@@ -51,19 +51,11 @@ typedef struct {
   char *error_msg;
 } LeaveResult;
 
+char text[512] = {0};
+
 static LeaveResult db_on_player_leave(const char *lobby_id, int player_id);
 
 // ======= Utility =======
-
-char fullMessage[4096];
-
-static void fullMessageConCat(const char *part) {
-  size_t current_len = fullMessage[0] ? strlen(fullMessage) : 0;
-  size_t part_len = strlen(part);
-  if (current_len + part_len < sizeof(fullMessage)) {
-    strcat(fullMessage, part);
-  }
-}
 
 static const char* find_substr(const char* hay, size_t hlen, const char* needle) {
   size_t nlen = strlen(needle);
@@ -357,7 +349,7 @@ static void advance_turn_and_broadcast(struct lobby_room *r) {
     }
 
     char msg[256];
-    sprintf(msg, "{\"type\":\"game_ended\",\"message\":\"La partita è terminata: tutti hanno giocato!\", \"text\":\"%s\"}", fullMessage);
+    sprintf(msg, "{\"type\":\"game_ended\",\"message\":\"La partita è terminata: tutti hanno giocato!\", \"text\":\"%s\"}", text);
     room_broadcast(r, msg);
 
     return;
@@ -374,7 +366,7 @@ static void advance_turn_and_broadcast(struct lobby_room *r) {
     }
     r->current_player_id[0] = 0;
     char msg[256];
-    sprintf(msg, "{\"type\":\"game_ended\",\"message\":\"La partita è terminata: nessun prossimo giocatore!\", \"text\":\"%s\"}", fullMessage);
+    sprintf(msg, "{\"type\":\"game_ended\",\"message\":\"La partita è terminata: nessun prossimo giocatore!\", \"text\":\"%s\"}", text);
     room_broadcast(r, msg);
     return;
   }
@@ -499,10 +491,7 @@ static void handle_action_chat(struct mg_connection *c, struct mg_ws_message *wm
     return;
   }
 
-  char text[512] = {0};
   json_get_str(wm, "text", text, sizeof(text));
-
-  fullMessageConCat(text);
 
   // Marca che questo giocatore ha scritto
   writer->has_played = true;
@@ -645,7 +634,7 @@ static void handle_action_endgame(struct mg_connection *c, struct conn_state *st
 
   // Broadcast a tutti che il game è finito
   char msg[256];
-  snprintf(msg, sizeof(msg), "{\"type\":\"game_ended\",\"message\":\"La partita è terminata\", \"text\":\"%s\"}", fullMessage);
+  snprintf(msg, sizeof(msg), "{\"type\":\"game_ended\",\"message\":\"La partita è terminata\", \"text\":\"%s\"}", text);
   room_broadcast(r, msg);
 }
 
