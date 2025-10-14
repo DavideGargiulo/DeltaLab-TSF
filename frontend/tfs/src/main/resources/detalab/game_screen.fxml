@@ -154,8 +154,11 @@
     <!-- FOOTER -->
     <bottom>
         <HBox alignment="CENTER" prefHeight="70" spacing="15" styleClass="footer">
-            <TextField fx:id="inputField" onAction="#submit" prefWidth="600" promptText="input text" styleClass="text-field" />
-            <Button fx:id="submitButton" onAction="#submit" prefHeight="45" prefWidth="100" styleClass="action-button" text="Submit" />
+         <Region prefHeight="200.0" prefWidth="200.0" HBox.hgrow="ALWAYS" />
+            <TextField fx:id="inputField" maxWidth="-Infinity" minWidth="-Infinity" onAction="#submit" prefWidth="600" promptText="input text" styleClass="text-field" />
+            <Button fx:id="submitButton" maxWidth="-Infinity" minWidth="-Infinity" onAction="#submit" prefHeight="45" prefWidth="100" styleClass="action-button" text="Submit" />
+         <Region prefHeight="200.0" prefWidth="200.0" />
+         <Button fx:id="startButton" onAction="#startGame" prefHeight="45" prefWidth="100" styleClass="action-button" text="Start" />
         </HBox>
     </bottom>
 </BorderPane>

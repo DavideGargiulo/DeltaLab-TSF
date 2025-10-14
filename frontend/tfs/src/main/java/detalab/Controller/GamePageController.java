@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.json.JSONObject;
+
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert.AlertType;
@@ -16,6 +18,7 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
 import detalab.DTO.CurrentLobby;
 import detalab.DTO.LanguageHelper;
+import detalab.DTO.Lobby;
 import detalab.DTO.LobbyWebSocketClient;
 import detalab.DTO.LoggedUser;
 import detalab.DTO.User;
@@ -40,6 +43,9 @@ public class GamePageController extends GeneralPageController {
 
   @FXML
   Button submitButton;
+
+  @FXML
+  Button startButton;
 
   @FXML
   TextField inputField;
@@ -148,12 +154,29 @@ public class GamePageController extends GeneralPageController {
       client.sendChatMessage(LanguageHelper.translateToEnglish(message + " " + inputText)).get();
       inputField.clear();
       phraseLabel.setText("");
+      inputField.setVisible(false);
+      submitButton.setVisible(false);
     } catch (Exception e) {
       showAlert(AlertType.ERROR, "Invalid Input", "Please enter a valid text.", e.getMessage());
       inputField.clear();
       return;
     }
 
+  }
+
+  boolean ableToStart = true;
+  String errorMessage = "";
+
+  @FXML
+  private void startGame() {
+    try {
+      JSONObject msg = new JSONObject();
+      msg.put("action", "start");
+      client.sendCustomMessage(msg).get();
+    } catch (Exception e) {
+      showAlert(AlertType.ERROR, "Start Error", "Unable to start the game", e.getMessage());
+      e.printStackTrace();
+    }
   }
 
   @FXML
@@ -342,10 +365,6 @@ public class GamePageController extends GeneralPageController {
 
       int id = Integer.parseInt(msg.optString("nextPlayerId"));
 
-      Platform.runLater(() -> {
-        highlightPlayer(id);
-      });
-
       if (id == LoggedUser.getInstance().getId()) {
         String message = msg.optString("text");
         Platform.runLater(() -> {
@@ -356,12 +375,55 @@ public class GamePageController extends GeneralPageController {
             e.printStackTrace();
             showAlert(AlertType.ERROR, "Error", "An error occurred.", "Unable to translate!");
           }
-          // TODO: Uncomment
-          // inputField.setVisible(true);
-          // submitButton.setVisible(true);
         });
       }
 
+    });
+
+    // Handler per cambio turno
+    client.onMessageType("turn_changed", msg -> {
+      System.out.printf("[TURN] Next player: %s (ID: %s)\n", msg.optString("username"),
+          msg.optString("currentPlayerId"));
+
+      String playerIdStr = msg.optString("currentPlayerId");
+      if (playerIdStr != null && !playerIdStr.isEmpty()) {
+        int id = Integer.parseInt(playerIdStr);
+        Platform.runLater(() -> {
+          highlightPlayer(id);
+
+          if (id == LoggedUser.getInstance().getId()) {
+            inputField.setVisible(true);
+            submitButton.setVisible(true);
+          }
+        });
+      }
+    });
+
+    // Hendler per inizio partita
+    client.onMessageType("game_started", msg -> {
+      String currentPlayerId = msg.optString("currentPlayerId");
+
+      Platform.runLater(() -> {
+        int id = Integer.parseInt(currentPlayerId);
+        highlightPlayer(id);
+
+        // Se è il turno dell'utente corrente
+        if (id == LoggedUser.getInstance().getId()) {
+          inputField.setVisible(true);
+          submitButton.setVisible(true);
+        }
+
+        startButton.setVisible(false);
+      });
+    });
+
+    // Handler per errori
+    client.onMessageType("error", msg -> {
+      String message = msg.optString("message");
+      System.out.println("[ERROR] " + message);
+      Platform.runLater(() -> {
+        showAlert(AlertType.ERROR, "Start Error", "Unable to start the game", message);
+      });
     });
 
   }
@@ -499,6 +561,11 @@ public class GamePageController extends GeneralPageController {
     }
   }
 
+  boolean iAmHost() {
+    CurrentLobby lobby = CurrentLobby.getInstance();
+    return lobby.getPlayers().get(0).getId() == LoggedUser.getInstance().getId();
+  }
+
   @FXML
   public void initialize() {
 
@@ -512,10 +579,14 @@ public class GamePageController extends GeneralPageController {
     setItemsNotVisible();
 
     // TODO: Uncomment
-    // inputField.setVisible(false);
-    // submitButton.setVisible(false);
+    inputField.setVisible(false);
+    submitButton.setVisible(false);
 
     loadPlayers();
+
+    if (!iAmHost()) {
+      startButton.setVisible(false);
+    }
 
     try {
       client.connectBlocking();

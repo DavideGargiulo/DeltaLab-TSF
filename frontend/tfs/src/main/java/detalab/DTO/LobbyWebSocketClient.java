@@ -9,7 +9,6 @@ import java.net.URI;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Client WebSocket asincrono per la lobby multiplayer. Gestisce connessione,
@@ -94,6 +93,11 @@ public class LobbyWebSocketClient extends WebSocketClient {
     onMessageType("chat", msg -> {
       System.out.printf("[CHAT] %s: %s (Next: %s)%n", msg.optString("username"), msg.optString("text"),
           msg.optString("nextPlayerId"));
+    });
+
+    // Handler per cambio turno
+    onMessageType("turn_changed", msg -> {
+      System.out.printf("[WS] Turno cambiato - ID Prossimo giocatore: %s%n", msg.optString("nextPlayerId"));
     });
 
     // Handler per stato lobby
