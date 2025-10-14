@@ -441,12 +441,10 @@ static void handle_action_leave(struct mg_connection *c, struct conn_state *st) 
             st->player_id, r->players_count);
     room_broadcast(r, msg);
 
-    // Se il giocatore uscito era il current player, avanza il turno
     if (r->current_player_id[0] && strncmp(r->current_player_id, st->player_id, sizeof(r->current_player_id)) == 0) {
       advance_turn_and_broadcast(r);
     }
 
-    // Se il giocatore uscito era il creatore, azzera il creator_id (DB potrebbe gestire ricreazione)
     if (is_creator(r, st->player_id)) {
       r->creator_id[0] = 0;
     }
