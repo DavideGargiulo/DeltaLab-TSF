@@ -313,22 +313,66 @@ static void get_next_player_id(struct lobby_room *r, const char *current_id,
 }
 
 static void advance_turn_and_broadcast(struct lobby_room *r) {
-  if (!r || !r->clients) return;
+  if (!r || !r->clients) {
+    // Nessun giocatore rimasto, termina la partita
+    if (r && r->creator_id[0]) {
+      int creator_id = atoi(r->creator_id);
+      db_on_game_end(r->id, creator_id);
+      r->current_player_id[0] = 0;
+      room_broadcast(r, "{\"type\":\"game_ended\",\"message\":\"La partita è terminata automaticamente (nessun giocatore)\"}");
+    }
+    return;
+  }
+
+  // Controlla se tutti hanno già giocato
+  bool all_played = true;
+  for (struct ws_client *cl = r->clients; cl; cl = cl->next) {
+    if (!cl->has_played) {
+      all_played = false;
+      break;
+    }
+  }
+
+  // Se tutti hanno giocato, termina la partita
+  if (all_played) {
+    if (r->creator_id[0]) {
+      int creator_id = atoi(r->creator_id);
+      db_on_game_end(r->id, creator_id);
+    }
+    r->current_player_id[0] = 0;
+
+    // Reset has_played per permettere una nuova partita
+    for (struct ws_client *cl = r->clients; cl; cl = cl->next) {
+      cl->has_played = false;
+    }
+
+    room_broadcast(r, "{\"type\":\"game_ended\",\"message\":\"La partita è terminata: tutti hanno giocato!\"}");
+    return;
+  }
 
   char next_id[32] = {0};
   get_next_player_id(r, r->current_player_id, next_id, sizeof(next_id));
 
-  if (next_id[0]) {
-    snprintf(r->current_player_id, sizeof(r->current_player_id), "%s", next_id);
-
-    // Trova il nickname del prossimo giocatore
-    const struct ws_client *next_cl = find_client_by_id(r, next_id);
-    const char *next_username = next_cl ? next_cl->username : "";
-
-    char msg[256];
-    snprintf(msg, sizeof(msg), "{\"type\":\"turn_changed\",\"currentPlayerId\":\"%s\",\"username\":\"%s\"}", next_id, next_username);
-    room_broadcast(r, msg);
+  if (!next_id[0]) {
+    // Non trovato prossimo giocatore, termina la partita
+    if (r->creator_id[0]) {
+      int creator_id = atoi(r->creator_id);
+      db_on_game_end(r->id, creator_id);
+    }
+    r->current_player_id[0] = 0;
+    room_broadcast(r, "{\"type\":\"game_ended\",\"message\":\"La partita è terminata automaticamente\"}");
+    return;
   }
+
+  snprintf(r->current_player_id, sizeof(r->current_player_id), "%s", next_id);
+
+  // Trova il nickname del prossimo giocatore
+  const struct ws_client *next_cl = find_client_by_id(r, next_id);
+  const char *next_username = next_cl ? next_cl->username : "";
+
+  char msg[256];
+  snprintf(msg, sizeof(msg), "{\"type\":\"turn_changed\",\"currentPlayerId\":\"%s\",\"username\":\"%s\"}", next_id, next_username);
+  room_broadcast(r, msg);
 }
 
 static void handle_action_leave(struct mg_connection *c, struct conn_state *st) {
@@ -446,11 +490,15 @@ static void handle_action_chat(struct mg_connection *c, struct mg_ws_message *wm
   // Marca che questo giocatore ha scritto
   writer->has_played = true;
 
-  // Broadcast del messaggio
+  // Trova il prossimo giocatore PRIMA di avanzare
+  char next_id[32] = {0};
+  get_next_player_id(r, r->current_player_id, next_id, sizeof(next_id));
+
+  // Broadcast del messaggio con info sul prossimo giocatore
   char msg[900];
   int n = snprintf(msg, sizeof(msg),
-           "{\"type\":\"chat\",\"playerId\":\"%s\",\"username\":\"%s\",\"text\":\"%s\"}",
-           st->player_id, st->username, text);
+           "{\"type\":\"chat\",\"playerId\":\"%s\",\"username\":\"%s\",\"text\":\"%s\",\"nextPlayerId\":\"%s\"}",
+           st->player_id, st->username, text, next_id);
   if (n < 0) return;
   if ((size_t)n >= sizeof(msg)) msg[sizeof(msg)-1] = '\0';
 
