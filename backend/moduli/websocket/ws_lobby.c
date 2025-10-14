@@ -378,7 +378,7 @@ static void advance_turn_and_broadcast(struct lobby_room *r) {
   const char *next_username = next_cl ? next_cl->username : "";
 
   char msg[256];
-  snprintf(msg, sizeof(msg), "{\"type\":\"turn_changed\",\"currentPlayerId\":\"%s\",\"username\":\"%s\"}", next_id, next_username);
+  snprintf(msg, sizeof(msg), "{\"type\":\"turn_changed\",\"currentPlayerId\":\"%s\",\"username\":\"%s\", \"lastMessage\":\"%s\"}", next_id, next_username, text);
   room_broadcast(r, msg);
 }
 
@@ -406,7 +406,7 @@ static void handle_action_leave(struct mg_connection *c, struct conn_state *st) 
     return;
   }
 
-  // Se la lobby è stata eliminata (creatore uscito)
+  // Se la lobby Ã¨ stata eliminata (creatore uscito)
   if (result.lobby_deleted) {
     room_broadcast(r, "{\"type\":\"lobby_deleted\",\"message\":\"Il creatore ha chiuso la lobby\"}");
 
@@ -432,10 +432,11 @@ static void handle_action_leave(struct mg_connection *c, struct conn_state *st) 
       pp = &(*pp)->next;
     }
   } else {
-    bool was_current_player = (r->current_player_id[0] && strncmp(r->current_player_id, st->player_id, sizeof(r->current_player_id)) == 0);
-
+    // Giocatore normale esce
+    bool was_current_turn = (r->current_player_id[0] && strncmp(r->current_player_id, st->player_id, sizeof(r->current_player_id)) == 0);
     char next_player_id[32] = {0};
-    if (was_current_player) {
+
+    if (was_current_turn) {
       get_next_player_id(r, st->player_id, next_player_id, sizeof(next_player_id));
     }
 
@@ -443,44 +444,26 @@ static void handle_action_leave(struct mg_connection *c, struct conn_state *st) 
 
     char msg[256];
     snprintf(msg, sizeof(msg),
-            "{\"type\":\"player_left\",\"playerId\":\"%s\",\"players\":%d}",
-            st->player_id, r->players_count);
+            "{\"type\":\"player_left\",\"playerId\":\"%s\",\"players\":%d, \"lastMessage\":%s}",
+            st->player_id, r->players_count, text);
     room_broadcast(r, msg);
 
-    // Se era il turno del giocatore che è uscito, avanza al prossimo
-    if (was_current_player) {
-      if (next_player_id[0]) {
-        struct ws_client *next_cl = find_client_by_id(r, next_player_id);
+    if (was_current_turn) {
+      if (next_player_id[0] && find_client_by_id(r, next_player_id)) {
+        snprintf(r->current_player_id, sizeof(r->current_player_id), "%s", next_player_id);
+        const struct ws_client *next_cl = find_client_by_id(r, next_player_id);
+        const char *next_username = next_cl ? next_cl->username : "";
 
-        if (next_cl) {
-          // Imposta il prossimo giocatore
-          snprintf(r->current_player_id, sizeof(r->current_player_id), "%s", next_player_id);
-
-          char turn_msg[256];
-          snprintf(turn_msg, sizeof(turn_msg),
-                   "{\"type\":\"turn_changed\",\"currentPlayerId\":\"%s\",\"username\":\"%s\"}",
-                   next_player_id, next_cl->username);
-          room_broadcast(r, turn_msg);
-        } else {
-          // Non ci sono più giocatori, termina la partita
-          r->current_player_id[0] = 0;
-          if (r->creator_id[0]) {
-            int creator_id = atoi(r->creator_id);
-            db_on_game_end(r->id, creator_id);
-          }
-          room_broadcast(r, "{\"type\":\"game_ended\",\"message\":\"La partita è terminata: nessun giocatore rimasto\"}");
-        }
+        char turn_msg[256];
+        snprintf(turn_msg, sizeof(turn_msg), "{\"type\":\"turn_changed\",\"currentPlayerId\":\"%s\",\"username\":\"%s\", \"lastMessage\":%s}", next_player_id, next_username, text);
+        room_broadcast(r, turn_msg);
       } else {
-        // Nessun prossimo giocatore trovato
-        r->current_player_id[0] = 0;
-        room_broadcast(r, "{\"type\":\"game_ended\",\"message\":\"La partita è terminata\"}");
+        advance_turn_and_broadcast(r);
       }
     }
-
     if (is_creator(r, st->player_id)) {
       r->creator_id[0] = 0;
     }
-
     delete_room_if_empty(r);
   }
 

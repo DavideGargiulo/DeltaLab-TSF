@@ -359,51 +359,48 @@ public class GamePageController extends GeneralPageController {
 
     // Handler per ricevere messaggio
     client.onMessageType("chat", msg -> {
-
       System.out.printf("[CHAT] %s: %s (Next: %s)%n", msg.optString("username"), msg.optString("text"),
           msg.optString("nextPlayerId"));
-
-      int id = Integer.parseInt(msg.optString("nextPlayerId"));
-
-      if (id == LoggedUser.getInstance().getId()) {
-        String message = msg.optString("text");
-        Platform.runLater(() -> {
-          try {
-            phraseLabel.setText(LanguageHelper.translateToNative(message));
-          } catch (Exception e) {
-            phraseLabel.setText(message);
-            e.printStackTrace();
-            showAlert(AlertType.ERROR, "Error", "An error occurred.", "Unable to translate!");
-          }
-        });
-      }
-
     });
 
     // Handler per cambio turno
     client.onMessageType("turn_changed", msg -> {
-      System.out.printf("[TURN] Next player: %s (ID: %s)\n", msg.optString("username"),
-          msg.optString("currentPlayerId"));
+      System.out.printf("[TURN] Next player: %s (ID: %s). Last message: %s\n", msg.optString("username"),
+          msg.optString("currentPlayerId"), msg.optString("lastMessage"));
 
       String playerIdStr = msg.optString("currentPlayerId");
+      String lastMessage = msg.optString("lastMessage");
+
       if (playerIdStr != null && !playerIdStr.isEmpty()) {
         int id = Integer.parseInt(playerIdStr);
+
         Platform.runLater(() -> {
           highlightPlayer(id);
 
-          if (id == LoggedUser.getInstance().getId()) {
-            inputField.setVisible(true);
-            submitButton.setVisible(true);
+          // Imposta il messaggio per il prossimo giocatore
+          if (id == LoggedUser.getInstance().getId() && lastMessage != null && !lastMessage.isEmpty()) {
+            try {
+              phraseLabel.setText(LanguageHelper.translateToNative(lastMessage));
+              inputField.setVisible(true);
+              submitButton.setVisible(true);
+            } catch (Exception e) {
+              phraseLabel.setText(lastMessage);
+              e.printStackTrace();
+              showAlert(AlertType.ERROR, "Error", "An error occurred.", "Unable to translate!");
+            }
           }
         });
       }
     });
 
-    // Hendler per inizio partita
+    // Handler per inizio partita
     client.onMessageType("game_started", msg -> {
+
       String currentPlayerId = msg.optString("currentPlayerId");
 
       Platform.runLater(() -> {
+        phraseLabel.setText("");
+
         int id = Integer.parseInt(currentPlayerId);
         highlightPlayer(id);
 
@@ -426,6 +423,38 @@ public class GamePageController extends GeneralPageController {
       });
     });
 
+    // Handler per fine partita
+    client.onMessageType("game_ended", msg -> {
+
+      String finalMessage = msg.optString("text");
+
+      System.out.println("[GAME ENDED] Message: " + finalMessage);
+
+      Platform.runLater(() -> {
+        deHighlightAllPlayers();
+        inputField.setVisible(false);
+        submitButton.setVisible(false);
+        try {
+          phraseLabel.setText(
+              LanguageHelper.translateToNative("GAME ENDED") + "\n" + LanguageHelper.translateToNative(finalMessage));
+        } catch (IOException e) {
+          showAlert(AlertType.ERROR, "Error", "An error occurred.", "Unable to translate!");
+          e.printStackTrace();
+        }
+        if (iAmHost()) {
+          startButton.setVisible(true);
+        }
+
+      });
+
+    });
+
+  }
+
+  private void deHighlightAllPlayers() {
+    for (PlayerUI player : players) {
+      player.glow.setVisible(false);
+    }
   }
 
   private void reloadPlayersUI() {
@@ -578,7 +607,6 @@ public class GamePageController extends GeneralPageController {
 
     setItemsNotVisible();
 
-    // TODO: Uncomment
     inputField.setVisible(false);
     submitButton.setVisible(false);
 
