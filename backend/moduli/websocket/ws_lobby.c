@@ -30,6 +30,9 @@ struct lobby_room {
   char creator_id[32];
   char current_player_id[32];
   char rotation[16];
+  char last_message[512];      // ✅ Ultimo messaggio della catena
+  char full_story[4096];        // ✅ NUOVO: Storia completa del gioco
+  bool game_active;             // ✅ NUOVO: Flag per sapere se il gioco è attivo
   struct ws_client *clients;
   struct lobby_room *next;
 };
@@ -50,8 +53,6 @@ typedef struct {
   bool lobby_deleted;
   char *error_msg;
 } LeaveResult;
-
-char text[512] = {0};
 
 static LeaveResult db_on_player_leave(const char *lobby_id, int player_id);
 
@@ -82,7 +83,10 @@ static struct lobby_room *get_or_create_room(const char *lobby_id) {
   r->clients = NULL;
   r->creator_id[0] = 0;
   r->current_player_id[0] = 0;
-  snprintf(r->rotation, sizeof(r->rotation), "orario"); // default
+  r->last_message[0] = 0;       // ✅ Inizializza last_message
+  r->full_story[0] = 0;         // ✅ Inizializza full_story
+  r->game_active = false;       // ✅ Inizializza game_active
+  snprintf(r->rotation, sizeof(r->rotation), "orario");
   r->next = s_ws.rooms;
   s_ws.rooms = r;
   return r;
@@ -316,69 +320,94 @@ static void get_next_player_id(struct lobby_room *r, const char *current_id,
 
 static void advance_turn_and_broadcast(struct lobby_room *r) {
   if (!r || !r->clients) {
-    // Nessun giocatore rimasto, termina la partita
-    if (r && r->creator_id[0]) {
+    if (r && r->creator_id[0] && r->game_active) {
       int creator_id = atoi(r->creator_id);
       db_on_game_end(r->id, creator_id);
       r->current_player_id[0] = 0;
+      r->game_active = false;
       room_broadcast(r, "{\"type\":\"game_ended\",\"message\":\"La partita è terminata automaticamente (nessun giocatore)\"}");
     }
     return;
   }
 
-  // Controlla se tutti hanno già giocato
+  // ✅ FIX: Controlla solo i giocatori ancora connessi
   bool all_played = true;
+  int connected_count = 0;
   for (struct ws_client *cl = r->clients; cl; cl = cl->next) {
+    connected_count++;
     if (!cl->has_played) {
       all_played = false;
       break;
     }
   }
 
-  // Se tutti hanno giocato, termina la partita
-  if (all_played) {
+  // ✅ Se tutti i giocatori connessi hanno giocato, termina la partita
+  if (all_played && connected_count > 0) {
     if (r->creator_id[0]) {
       int creator_id = atoi(r->creator_id);
       db_on_game_end(r->id, creator_id);
     }
     r->current_player_id[0] = 0;
+    r->game_active = false;
 
     // Reset has_played per permettere una nuova partita
     for (struct ws_client *cl = r->clients; cl; cl = cl->next) {
       cl->has_played = false;
     }
 
-    char msg[256];
-    snprintf(msg, "{\"type\":\"game_ended\",\"message\":\"La partita è terminata: tutti hanno giocato!\", \"text\":\"%s\"}", text);
+    char msg[4600];
+    snprintf(msg, sizeof(msg),
+             "{\"type\":\"game_ended\",\"message\":\"La partita è terminata: tutti hanno giocato!\",\"text\":\"%s\"}",
+             r->full_story);  // ✅ USA la storia completa
     room_broadcast(r, msg);
-
     return;
   }
 
+  // ✅ Trova il prossimo giocatore che non ha ancora giocato
   char next_id[32] = {0};
-  get_next_player_id(r, r->current_player_id, next_id, sizeof(next_id));
+  struct ws_client *start = find_client_by_id(r, r->current_player_id);
+  struct ws_client *iter = start ? start->next : r->clients;
+  if (!iter) iter = r->clients;
+
+  // Cicla fino a trovare un giocatore che non ha giocato
+  int attempts = 0;
+  while (iter && attempts < 10) {  // Max 10 tentativi per evitare loop infiniti
+    if (!iter->has_played) {
+      snprintf(next_id, sizeof(next_id), "%s", iter->player_id);
+      break;
+    }
+    iter = iter->next ? iter->next : r->clients;
+    attempts++;
+
+    // Evita loop infinito se siamo tornati al punto di partenza
+    if (iter == start) break;
+  }
 
   if (!next_id[0]) {
-    // Non trovato prossimo giocatore, termina la partita
+    // Nessun prossimo giocatore trovato, termina
     if (r->creator_id[0]) {
       int creator_id = atoi(r->creator_id);
       db_on_game_end(r->id, creator_id);
     }
     r->current_player_id[0] = 0;
-    char msg[256];
-    sprintf(msg, "{\"type\":\"game_ended\",\"message\":\"La partita è terminata: nessun prossimo giocatore!\", \"text\":\"%s\"}", text);
+    r->game_active = false;
+    char msg[4600];
+    snprintf(msg, sizeof(msg),
+             "{\"type\":\"game_ended\",\"message\":\"La partita è terminata: nessun prossimo giocatore!\",\"text\":\"%s\"}",
+             r->full_story);
     room_broadcast(r, msg);
     return;
   }
 
   snprintf(r->current_player_id, sizeof(r->current_player_id), "%s", next_id);
 
-  // Trova il nickname del prossimo giocatore
   const struct ws_client *next_cl = find_client_by_id(r, next_id);
   const char *next_username = next_cl ? next_cl->username : "";
 
-  char msg[256];
-  snprintf(msg, sizeof(msg), "{\"type\":\"turn_changed\",\"currentPlayerId\":\"%s\",\"username\":\"%s\", \"lastMessage\":\"%s\"}", next_id, next_username, text);
+  char msg[4600];
+  snprintf(msg, sizeof(msg),
+           "{\"type\":\"turn_changed\",\"currentPlayerId\":\"%s\",\"username\":\"%s\",\"lastMessage\":\"%s\"}",
+           next_id, next_username, r->full_story);  // ✅ Invia la storia completa
   room_broadcast(r, msg);
 }
 
@@ -388,7 +417,6 @@ static void handle_action_leave(struct mg_connection *c, struct conn_state *st) 
   struct lobby_room *r = find_room(st->lobby_id);
   if (!r) return;
 
-  // Chiama la funzione DB (ora con conversione corretta)
   int player_id_int = atoi(st->player_id);
   LeaveResult result = db_on_player_leave(st->lobby_id, player_id_int);
 
@@ -406,11 +434,9 @@ static void handle_action_leave(struct mg_connection *c, struct conn_state *st) 
     return;
   }
 
-  // Se la lobby Ã¨ stata eliminata (creatore uscito)
   if (result.lobby_deleted) {
     room_broadcast(r, "{\"type\":\"lobby_deleted\",\"message\":\"Il creatore ha chiuso la lobby\"}");
 
-    // Chiudi tutte le connessioni
     struct ws_client *cl = r->clients;
     while (cl) {
       struct ws_client *next = cl->next;
@@ -421,7 +447,6 @@ static void handle_action_leave(struct mg_connection *c, struct conn_state *st) 
       cl = next;
     }
 
-    // Rimuovi room
     struct lobby_room **pp = &s_ws.rooms;
     while (*pp) {
       if (*pp == r) {
@@ -432,42 +457,33 @@ static void handle_action_leave(struct mg_connection *c, struct conn_state *st) 
       pp = &(*pp)->next;
     }
   } else {
-    // Giocatore normale esce
-    bool was_current_turn = (r->current_player_id[0] && strncmp(r->current_player_id, st->player_id, sizeof(r->current_player_id)) == 0);
-    char next_player_id[32] = {0};
+    // ✅ FIX: Controlla se era il turno del giocatore che sta uscendo
+    bool was_current_turn = (r->current_player_id[0] &&
+                             strncmp(r->current_player_id, st->player_id, sizeof(r->current_player_id)) == 0);
 
-    if (was_current_turn) {
-      get_next_player_id(r, st->player_id, next_player_id, sizeof(next_player_id));
-    }
-
+    // ✅ IMPORTANTE: Rimuovi il client PRIMA di calcolare il prossimo
     remove_client(r, c, st->player_id);
 
-    char msg[256];
+    // Broadcast che il giocatore è uscito
+    char msg[512];
     snprintf(msg, sizeof(msg),
-            "{\"type\":\"player_left\",\"playerId\":\"%s\",\"players\":%d, \"lastMessage\":%s}",
-            st->player_id, r->players_count, text);
+            "{\"type\":\"player_left\",\"playerId\":\"%s\",\"players\":%d,\"lastMessage\":\"%s\"}",
+            st->player_id, r->players_count, r->full_story);  // ✅ USA full_story
     room_broadcast(r, msg);
 
-    if (was_current_turn) {
-      if (next_player_id[0] && find_client_by_id(r, next_player_id)) {
-        snprintf(r->current_player_id, sizeof(r->current_player_id), "%s", next_player_id);
-        const struct ws_client *next_cl = find_client_by_id(r, next_player_id);
-        const char *next_username = next_cl ? next_cl->username : "";
-
-        char turn_msg[256];
-        snprintf(turn_msg, sizeof(turn_msg), "{\"type\":\"turn_changed\",\"currentPlayerId\":\"%s\",\"username\":\"%s\", \"lastMessage\":%s}", next_player_id, next_username, text);
-        room_broadcast(r, turn_msg);
-      } else {
-        advance_turn_and_broadcast(r);
-      }
+    // ✅ Se era il suo turno E il gioco è attivo, passa al prossimo
+    if (was_current_turn && r->game_active) {
+      // Il turno passa automaticamente al prossimo giocatore
+      advance_turn_and_broadcast(r);
     }
+
     if (is_creator(r, st->player_id)) {
       r->creator_id[0] = 0;
     }
+
     delete_room_if_empty(r);
   }
 
-  // Reset stato
   st->lobby_id[0] = 0;
   st->player_id[0] = 0;
   st->username[0] = 0;
@@ -486,7 +502,6 @@ static void handle_action_chat(struct mg_connection *c, struct mg_ws_message *wm
     return;
   }
 
-  // Trova il client che sta scrivendo
   struct ws_client *writer = NULL;
   for (struct ws_client *cl = r->clients; cl; cl = cl->next) {
     if (cl->c == c) {
@@ -497,23 +512,39 @@ static void handle_action_chat(struct mg_connection *c, struct mg_ws_message *wm
 
   if (!writer) return;
 
-  // Verifica che non abbia già giocato
   if (writer->has_played) {
     const char *err = "{\"type\":\"error\",\"message\":\"Hai già scritto la tua parola\"}";
     mg_ws_send(c, err, strlen(err), WEBSOCKET_OP_TEXT);
     return;
   }
 
+  // ✅ Leggi il messaggio
+  char text[512] = {0};
   json_get_str(wm, "text", text, sizeof(text));
+
+  // ✅ Aggiorna last_message
+  snprintf(r->last_message, sizeof(r->last_message), "%s", text);
+
+  // ✅ NUOVO: Aggiungi alla storia completa
+  if (r->full_story[0]) {
+    // Se c'è già testo, aggiungi uno spazio
+    size_t current_len = strlen(r->full_story);
+    if (current_len + 1 + strlen(text) < sizeof(r->full_story)) {
+      snprintf(r->full_story + current_len, sizeof(r->full_story) - current_len, " %s", text);
+    }
+  } else {
+    // Primo messaggio
+    snprintf(r->full_story, sizeof(r->full_story), "%s", text);
+  }
 
   // Marca che questo giocatore ha scritto
   writer->has_played = true;
 
-  // Trova il prossimo giocatore PRIMA di avanzare
+  // ✅ Calcola il prossimo giocatore PRIMA di cambiare il turno
   char next_id[32] = {0};
   get_next_player_id(r, r->current_player_id, next_id, sizeof(next_id));
 
-  // Broadcast del messaggio con info sul prossimo giocatore
+  // Broadcast del messaggio di chat
   char msg[900];
   int n = snprintf(msg, sizeof(msg),
            "{\"type\":\"chat\",\"playerId\":\"%s\",\"username\":\"%s\",\"text\":\"%s\",\"nextPlayerId\":\"%s\"}",
@@ -523,7 +554,7 @@ static void handle_action_chat(struct mg_connection *c, struct mg_ws_message *wm
 
   room_broadcast(r, msg);
 
-  // Avanza automaticamente al prossimo giocatore
+  // ✅ Avanza il turno DOPO aver inviato il messaggio di chat
   advance_turn_and_broadcast(r);
 }
 
@@ -579,14 +610,12 @@ static void handle_action_start(struct mg_connection *c, struct conn_state *st) 
   struct lobby_room *r = find_room(st->lobby_id);
   if (!r) return;
 
-  // Verifica che sia il creatore
   if (!is_creator(r, st->player_id)) {
     const char *err = "{\"type\":\"error\",\"message\":\"Solo il creatore può avviare la partita\"}";
     mg_ws_send(c, err, strlen(err), WEBSOCKET_OP_TEXT);
     return;
   }
 
-  // Verifica numero minimo di giocatori
   if (r->players_count < 4) {
     char err[128];
     snprintf(err, sizeof(err),
@@ -595,7 +624,6 @@ static void handle_action_start(struct mg_connection *c, struct conn_state *st) 
     return;
   }
 
-  // Chiama la funzione DB
   int creator_id = atoi(st->player_id);
   if (!db_on_game_start(st->lobby_id, creator_id)) {
     const char *err = "{\"type\":\"error\",\"message\":\"Errore nell'avvio della partita\"}";
@@ -603,15 +631,16 @@ static void handle_action_start(struct mg_connection *c, struct conn_state *st) 
     return;
   }
 
-  // Reset del flag has_played per tutti i giocatori
+  // ✅ Reset dello stato del gioco
   for (struct ws_client *cl = r->clients; cl; cl = cl->next) {
     cl->has_played = false;
   }
+  r->last_message[0] = 0;
+  r->full_story[0] = 0;
+  r->game_active = true;  // ✅ Attiva il gioco
 
-  // Imposta il primo giocatore (il creatore)
   snprintf(r->current_player_id, sizeof(r->current_player_id), "%s", st->player_id);
 
-  // Broadcast a tutti che il game è iniziato
   char msg[256];
   snprintf(msg, sizeof(msg),
            "{\"type\":\"game_started\",\"currentPlayerId\":\"%s\",\"username\":\"%s\"}",
@@ -624,14 +653,12 @@ static void handle_action_endgame(struct mg_connection *c, struct conn_state *st
   struct lobby_room *r = find_room(st->lobby_id);
   if (!r) return;
 
-  // Verifica che sia il creatore
   if (!is_creator(r, st->player_id)) {
     const char *err = "{\"type\":\"error\",\"message\":\"Solo il creatore può terminare la partita\"}";
     mg_ws_send(c, err, strlen(err), WEBSOCKET_OP_TEXT);
     return;
   }
 
-  // Chiama la funzione DB
   int creator_id = atoi(st->player_id);
   if (!db_on_game_end(st->lobby_id, creator_id)) {
     const char *err = "{\"type\":\"error\",\"message\":\"Errore nella terminazione della partita\"}";
@@ -639,15 +666,17 @@ static void handle_action_endgame(struct mg_connection *c, struct conn_state *st
     return;
   }
 
-  // Reset del current player e has_played
   r->current_player_id[0] = 0;
+  r->game_active = false;  // ✅ Disattiva il gioco
+
   for (struct ws_client *cl = r->clients; cl; cl = cl->next) {
     cl->has_played = false;
   }
 
-  // Broadcast a tutti che il game è finito
-  char msg[256];
-  snprintf(msg, sizeof(msg), "{\"type\":\"game_ended\",\"message\":\"La partita è terminata\", \"text\":\"%s\"}", text);
+  char msg[4600];
+  snprintf(msg, sizeof(msg),
+           "{\"type\":\"game_ended\",\"message\":\"La partita è terminata\",\"text\":\"%s\"}",
+           r->full_story);  // ✅ USA full_story
   room_broadcast(r, msg);
 }
 
