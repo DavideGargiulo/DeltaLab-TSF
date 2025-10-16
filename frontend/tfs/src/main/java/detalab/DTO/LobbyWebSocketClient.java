@@ -89,12 +89,6 @@ public class LobbyWebSocketClient extends WebSocketClient {
       System.out.printf("[WS] Giocatore uscito: %s - Rimasti: %d%n", msg.optString("playerId"), msg.optInt("players"));
     });
 
-    // Handler per messaggi chat
-    onMessageType("chat", msg -> {
-      System.out.printf("[CHAT] %s: %s (Next: %s)%n", msg.optString("username"), msg.optString("text"),
-          msg.optString("nextPlayerId"));
-    });
-
     // Handler per cambio turno
     onMessageType("turn_changed", msg -> {
       System.out.printf("[WS] Turno cambiato - ID Prossimo giocatore: %s%n", msg.optString("nextPlayerId"));

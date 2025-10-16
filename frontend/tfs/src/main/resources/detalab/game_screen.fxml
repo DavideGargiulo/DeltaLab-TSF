@@ -138,7 +138,7 @@
                 </StackPane>
 
                 <!-- Frase centrale -->
-                <Label fx:id="phraseLabel" alignment="CENTER" layoutX="360.0" layoutY="260.0" prefWidth="280" styleClass="phrase-label" text="phrase ........" textAlignment="CENTER" />
+                <Label fx:id="phraseLabel" alignment="CENTER" layoutX="360.0" layoutY="260.0" prefWidth="280" styleClass="phrase-label" textAlignment="CENTER" />
             </Pane>
         </StackPane>
     </center>

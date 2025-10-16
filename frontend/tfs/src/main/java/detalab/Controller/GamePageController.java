@@ -144,14 +144,13 @@ public class GamePageController extends GeneralPageController {
 
   @FXML
   private void submit() {
-    String message = phraseLabel.getText().trim();
     String inputText = inputField.getText().trim();
 
     try {
       if (inputText.isEmpty()) {
         throw new IllegalArgumentException("Input text cannot be empty.");
       }
-      client.sendChatMessage(LanguageHelper.translateToEnglish(message + " " + inputText)).get();
+      client.sendChatMessage(LanguageHelper.translateToEnglish(inputText)).get();
       inputField.clear();
       phraseLabel.setText("");
       inputField.setVisible(false);
@@ -242,7 +241,6 @@ public class GamePageController extends GeneralPageController {
     for (PlayerUI player : players) {
       player.container.setVisible(false);
     }
-    phraseLabel.setText("");
   }
 
   CurrentLobby lobby = CurrentLobby.getInstance();
@@ -357,12 +355,6 @@ public class GamePageController extends GeneralPageController {
 
     });
 
-    // Handler per ricevere messaggio
-    client.onMessageType("chat", msg -> {
-      System.out.printf("[CHAT] %s: %s (Next: %s)%n", msg.optString("username"), msg.optString("text"),
-          msg.optString("nextPlayerId"));
-    });
-
     // Handler per cambio turno
     client.onMessageType("turn_changed", msg -> {
       System.out.printf("[TURN] Next player: %s (ID: %s). Last message: %s\n", msg.optString("username"),
@@ -444,6 +436,8 @@ public class GamePageController extends GeneralPageController {
         if (iAmHost()) {
           startButton.setVisible(true);
         }
+
+        showAlert(AlertType.INFORMATION, "Information", "Game ended", "The game has ended successfully.");
 
       });
 
