@@ -33,6 +33,8 @@ struct lobby_room {
   char last_message[512];      // ✅ Ultimo messaggio della catena
   char full_story[4096];        // ✅ NUOVO: Storia completa del gioco
   bool game_active;             // ✅ NUOVO: Flag per sapere se il gioco è attivo
+  int spectators_count;
+  struct ws_client *spectators;
   struct ws_client *clients;
   struct lobby_room *next;
 };
@@ -86,6 +88,8 @@ static struct lobby_room *get_or_create_room(const char *lobby_id) {
   r->last_message[0] = 0;       // ✅ Inizializza last_message
   r->full_story[0] = 0;         // ✅ Inizializza full_story
   r->game_active = false;       // ✅ Inizializza game_active
+  r->spectators = NULL;
+  r->spectators_count = 0;
   snprintf(r->rotation, sizeof(r->rotation), "orario");
   r->next = s_ws.rooms;
   s_ws.rooms = r;
@@ -93,13 +97,15 @@ static struct lobby_room *get_or_create_room(const char *lobby_id) {
 }
 
 static void delete_room_if_empty(struct lobby_room *r) {
-  if (!r || r->players_count > 0 || r->clients) return;
+  if (!r) return;
+  if (r->players_count > 0 || r->clients || r->spectators || r->spectators_count > 0) return;
   struct lobby_room **pp = &s_ws.rooms;
   while (*pp) {
     if (*pp == r) { *pp = r->next; free(r); break; }
     pp = &(*pp)->next;
   }
 }
+
 
 static void remove_client(struct lobby_room *r, struct mg_connection *c, const char *player_id) {
   struct ws_client **pp = &r->clients;
@@ -119,6 +125,11 @@ static void room_broadcast(struct lobby_room *r, const char *json) {
   for (struct ws_client *cl = r->clients; cl; cl = cl->next) {
     if (cl->c && !cl->c->is_closing) {
       mg_ws_send(cl->c, json, strlen(json), WEBSOCKET_OP_TEXT);
+    }
+  }
+  for (struct ws_client *sp = r->spectators; sp; sp = sp->next) {
+    if (sp->c && !sp->c->is_closing) {
+      mg_ws_send(sp->c, json, strlen(json), WEBSOCKET_OP_TEXT);
     }
   }
 }
@@ -141,6 +152,64 @@ static struct ws_client* find_client_by_id(struct lobby_room *r, const char *pla
   }
   return NULL;
 }
+
+static void add_spectator(struct lobby_room *r, struct mg_connection *c, const char *player_id, const char *username) {
+  struct ws_client *cl = (struct ws_client *) calloc(1, sizeof(*cl));
+  if (!cl) return;
+  cl->c = c;
+  snprintf(cl->player_id, sizeof(cl->player_id), "%s", player_id ? player_id : "");
+  snprintf(cl->username, sizeof(cl->username), "%s", username ? username : "");
+  cl->next = NULL;
+
+  if (!r->spectators) r->spectators = cl;
+  else {
+    struct ws_client *tail = r->spectators;
+    while (tail->next) tail = tail->next;
+    tail->next = cl;
+  }
+  r->spectators_count++;
+}
+
+static void remove_spectator(struct lobby_room *r, struct mg_connection *c, const char *player_id) {
+  struct ws_client **pp = &r->spectators;
+  while (*pp) {
+    if ((*pp)->c == c || (player_id && strncmp((*pp)->player_id, player_id, sizeof((*pp)->player_id)) == 0)) {
+      struct ws_client *dead = *pp;
+      *pp = (*pp)->next;
+      if (r->spectators_count > 0) r->spectators_count--;
+      free(dead);
+      break;
+    }
+    pp = &(*pp)->next;
+  }
+}
+
+static void promote_spectators_if_slots(struct lobby_room *r) {
+  if (!r) return;
+  while (r->spectators && r->players_count < r->max_players) {
+    struct ws_client *sp = r->spectators;
+    r->spectators = sp->next;
+    r->spectators_count--;
+
+    sp->has_played = false;
+    sp->next = NULL;
+
+    if (!r->clients) r->clients = sp;
+    else {
+      struct ws_client *tail = r->clients;
+      while (tail->next) tail = tail->next;
+      tail->next = sp;
+    }
+    r->players_count++;
+
+    char bcast[256];
+    snprintf(bcast, sizeof(bcast),
+             "{\"type\":\"spectator_promoted\",\"playerId\":\"%s\",\"username\":\"%s\",\"players\":%d,\"spectators\":%d}",
+             sp->player_id, sp->username, r->players_count, r->spectators_count);
+    room_broadcast(r, bcast);
+  }
+}
+
 
 // ======= JSON naive (buf/len) =======
 
@@ -193,6 +262,7 @@ static void on_ws_close(struct mg_connection *c) {
   if (!r) { free(st); return; }
 
   remove_client(r, c, st->player_id);
+  remove_spectator(r, c, st->player_id);
 
   char msg[256];
   snprintf(msg, sizeof(msg),
@@ -210,14 +280,74 @@ static void on_ws_close(struct mg_connection *c) {
 
 // ======= Actions =======
 
+static void handle_action_join_spectator(struct mg_connection *c, struct mg_ws_message *wm, struct conn_state *st) {
+  char player_id[32] = {0}, username[64] = {0}, lobby_id[LOBBY_ID_MAXLEN] = {0};
+
+  snprintf(lobby_id, sizeof(lobby_id), "%s", st->lobby_id);
+  json_get_str(wm, "lobbyId", lobby_id, sizeof(lobby_id));
+  json_get_str(wm, "playerId", player_id, sizeof(player_id));
+  json_get_str(wm, "username", username, sizeof(username));
+
+  // DB: usa lo stesso hook del join giocatore oppure salta DB se non serve registrare spettatori
+  // Qui NON tocchiamo DB_*, seguiamo la tua logica esistente.
+  struct lobby_room *r = get_or_create_room(lobby_id);
+
+  // se già presente come player, non duplicare
+  if (find_client_by_id(r, player_id)) {
+    const char *already = "{\"type\":\"join_spectator_error\",\"message\":\"Sei già nella lobby\"}";
+    mg_ws_send(c, already, strlen(already), WEBSOCKET_OP_TEXT);
+    return;
+  }
+
+  // se già tra gli spettatori con stessa connessione o id, non duplicare
+  for (struct ws_client *it = r->spectators; it; it = it->next) {
+    if (it->c == c || strncmp(it->player_id, player_id, sizeof(it->player_id)) == 0) {
+      const char *already = "{\"type\":\"join_spectator_success\",\"role\":\"spectator\"}";
+      mg_ws_send(c, already, strlen(already), WEBSOCKET_OP_TEXT);
+      return;
+    }
+  }
+
+  add_spectator(r, c, player_id, username);
+
+  // aggiorna stato connessione
+  snprintf(st->lobby_id, sizeof(st->lobby_id), "%s", lobby_id);
+  snprintf(st->player_id, sizeof(st->player_id), "%s", player_id);
+  snprintf(st->username, sizeof(st->username), "%s", username);
+
+  // conferma e broadcast
+  char ok[256];
+  snprintf(ok, sizeof(ok),
+           "{\"type\":\"join_spectator_success\",\"playerId\":\"%s\",\"username\":\"%s\",\"lobbyId\":\"%s\",\"spectators\":%d}",
+           player_id, username, lobby_id, r->spectators_count);
+  mg_ws_send(c, ok, strlen(ok), WEBSOCKET_OP_TEXT);
+
+  char bcast[256];
+  snprintf(bcast, sizeof(bcast),
+           "{\"type\":\"spectator_joined\",\"playerId\":\"%s\",\"username\":\"%s\",\"spectators\":%d}",
+           player_id, username, r->spectators_count);
+  room_broadcast(r, bcast);
+}
+
+
 static void handle_action_join(struct mg_connection *c, struct mg_ws_message *wm, struct conn_state *st) {
   char player_id[32] = {0}, username[64] = {0}, lobby_id[LOBBY_ID_MAXLEN] = {0};
 
   snprintf(lobby_id, sizeof(lobby_id), "%s", st->lobby_id);
+  json_get_str(wm, "lobbyId", lobby_id, sizeof(lobby_id));
+
+  struct lobby_room *r = get_or_create_room(lobby_id);
+  bool lobby_is_full = (r->players_count >= r->max_players);
+  bool game_in_progress = r->game_active;
+
+  if (lobby_is_full || game_in_progress) {
+    handle_action_join_spectator(c, wm, st);
+    return;
+  }
 
   json_get_str(wm, "playerId", player_id, sizeof(player_id));
   json_get_str(wm, "username", username, sizeof(username));
-  json_get_str(wm, "lobbyId", lobby_id, sizeof(lobby_id));
+
 
   int player_id_int = atoi(player_id);
 
@@ -240,7 +370,6 @@ static void handle_action_join(struct mg_connection *c, struct mg_ws_message *wm
     snprintf(st->lobby_id, sizeof(st->lobby_id), "%s", lobby_id);
   }
 
-  struct lobby_room *r = get_or_create_room(lobby_id);
 
   struct ws_client *exists = NULL;
   for (struct ws_client *it = r->clients; it; it = it->next) {
@@ -325,6 +454,7 @@ static void advance_turn_and_broadcast(struct lobby_room *r) {
       db_on_game_end(r->id, creator_id);
       r->current_player_id[0] = 0;
       r->game_active = false;
+      promote_spectators_if_slots(r);
       room_broadcast(r, "{\"type\":\"game_ended\",\"message\":\"La partita è terminata automaticamente (nessun giocatore)\"}");
     }
     return;
@@ -346,6 +476,7 @@ static void advance_turn_and_broadcast(struct lobby_room *r) {
     if (r->creator_id[0]) {
       int creator_id = atoi(r->creator_id);
       db_on_game_end(r->id, creator_id);
+      promote_spectators_if_slots(r);
     }
     r->current_player_id[0] = 0;
     r->game_active = false;
@@ -391,6 +522,7 @@ static void advance_turn_and_broadcast(struct lobby_room *r) {
     }
     r->current_player_id[0] = 0;
     r->game_active = false;
+    promote_spectators_if_slots(r);
     char msg[4600];
     snprintf(msg, sizeof(msg),
              "{\"type\":\"game_ended\",\"message\":\"La partita è terminata: nessun prossimo giocatore!\",\"text\":\"%s\"}",
@@ -459,16 +591,20 @@ static void handle_action_leave(struct mg_connection *c, struct conn_state *st) 
   } else {
     // ✅ FIX: Controlla se era il turno del giocatore che sta uscendo
     bool was_current_turn = (r->current_player_id[0] &&
-                             strncmp(r->current_player_id, st->player_id, sizeof(r->current_player_id)) == 0);
+                            strncmp(r->current_player_id, st->player_id, sizeof(r->current_player_id)) == 0);
 
+    bool was_player = (find_client_by_id(r, st->player_id) != NULL);
     // ✅ IMPORTANTE: Rimuovi il client PRIMA di calcolare il prossimo
     remove_client(r, c, st->player_id);
+    if (!was_player) {
+      remove_spectator(r, c, st->player_id);
+    }
 
     // Broadcast che il giocatore è uscito
-    char msg[512];
+    char msg[5000];
     snprintf(msg, sizeof(msg),
-            "{\"type\":\"player_left\",\"playerId\":\"%s\",\"players\":%d,\"lastMessage\":\"%s\"}",
-            st->player_id, r->players_count, r->full_story);  // ✅ USA full_story
+            "{\"type\":\"player_left\",\"playerId\":\"%s\",\"players\":%d,\"spectators\":%d,\"lastMessage\":\"%s\"}",
+            st->player_id, r->players_count, r->spectators_count, r->full_story);  // ✅ USA full_story
     room_broadcast(r, msg);
 
     // ✅ Se era il suo turno E il gioco è attivo, passa al prossimo
@@ -575,6 +711,13 @@ static void handle_action_state(struct mg_connection *c, struct conn_state *st) 
                     cl->player_id, cl->username, cl->next ? "," : "");
     if (off >= sizeof(buf)) break;
   }
+  off += snprintf(buf + off, sizeof(buf) - off, "],\"spectators\":%d,\"spectatorsList\":[", r->spectators_count);
+  for (struct ws_client *sp = r->spectators; sp; sp = sp->next) {
+    off += snprintf(buf + off, sizeof(buf) - off,
+                    "{\"playerId\":\"%s\",\"username\":\"%s\"}%s",
+                    sp->player_id, sp->username, sp->next ? "," : "");
+    if (off >= sizeof(buf)) break;
+  }
   off += snprintf(buf + off, sizeof(buf) - off, "]}");
   mg_ws_send(c, buf, off, WEBSOCKET_OP_TEXT);
 }
@@ -674,6 +817,7 @@ static void handle_action_endgame(struct mg_connection *c, struct conn_state *st
   }
 
   char msg[4600];
+  promote_spectators_if_slots(r);
   snprintf(msg, sizeof(msg),
            "{\"type\":\"game_ended\",\"message\":\"La partita è terminata\",\"text\":\"%s\"}",
            r->full_story);  // ✅ USA full_story
@@ -708,6 +852,7 @@ static void ws_handler(struct mg_connection *c, int ev, void *ev_data) {
       else if (json_has(wm, "action", "setmax")) handle_action_setmax(c, wm, st);
       else if (json_has(wm, "action", "start")) handle_action_start(c, st);
       else if (json_has(wm, "action", "end")) handle_action_endgame(c, st);
+      else if (json_has(wm, "action", "join_spectator")) handle_action_join_spectator(c, wm, st);
       else {
         const char *err = "{\"type\":\"error\",\"message\":\"Unknown action\"}";
         mg_ws_send(c, err, strlen(err), WEBSOCKET_OP_TEXT);
@@ -767,8 +912,8 @@ bool ws_lobby_handle_http(struct mg_connection *c, struct mg_http_message *hm) {
   snprintf(st->lobby_id, sizeof(st->lobby_id), "%s", lobby_id);
   c->fn_data = st;
 
-  mg_ws_upgrade(c, hm, NULL);
   c->fn = ws_handler;           // <-- QUI il fix
+  mg_ws_upgrade(c, hm, NULL);
 
   return true;
 }
