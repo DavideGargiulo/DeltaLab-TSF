@@ -273,6 +273,11 @@ public class MainPageController extends GeneralPageController {
       }
 
       CurrentLobby.getInstance(lobby, players, spectators);
+
+      System.out.println("\n\n----------\n\n");
+      System.out.println(CurrentLobby.getInstance());
+      System.out.println("\n\n----------\n\n");
+
       App.setRoot("game_screen");
     } catch (Exception e) {
       e.printStackTrace();

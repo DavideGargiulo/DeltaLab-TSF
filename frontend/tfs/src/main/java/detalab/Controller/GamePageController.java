@@ -287,29 +287,27 @@ public class GamePageController extends GeneralPageController {
 
     // Handler per nuovo giocatore
     client.onMessageType("player_joined", msg -> {
-
       ArrayList<User> activePlayers = lobby.getPlayers();
       int playerId = Integer.parseInt(msg.optString("playerId"));
-      User newPlayer;
+      User newPlayer = new User(playerId, msg.optString("username"), "active");
+      activePlayers.add(newPlayer);
+      lobby.setPlayers(activePlayers);
+      Platform.runLater(() -> {
+        addPlayerToUI(newPlayer);
+        updatePlayersCount();
+      });
+    });
 
-      if (activePlayers.size() < 8) {
-        newPlayer = new User(playerId, msg.optString("username"), "active");
-        activePlayers.add(newPlayer);
-        lobby.setPlayers(activePlayers);
-        Platform.runLater(() -> {
-          addPlayerToUI(newPlayer);
-          updatePlayersCount();
-        });
-      } else {
-        newPlayer = new User(playerId, msg.optString("username"), "waiting");
-        ArrayList<User> waitingPlayers = lobby.getSpectators();
-        waitingPlayers.add(newPlayer);
-        lobby.setSpectators(waitingPlayers);
-        Platform.runLater(() -> {
-          waitingList.getItems().add(newPlayer.getUsername());
-        });
-      }
-
+    // Handler per nuovo spettatore
+    client.onMessageType("spectator_joined", msg -> {
+      int playerId = Integer.parseInt(msg.optString("playerId"));
+      User newPlayer = new User(playerId, msg.optString("username"), "waiting");
+      ArrayList<User> waitingPlayers = lobby.getSpectators();
+      waitingPlayers.add(newPlayer);
+      lobby.setSpectators(waitingPlayers);
+      Platform.runLater(() -> {
+        waitingList.getItems().add(newPlayer.getUsername());
+      });
     });
 
     // Handler per giocatore uscito
@@ -521,7 +519,6 @@ public class GamePageController extends GeneralPageController {
     CurrentLobby lobby = CurrentLobby.getInstance();
 
     ArrayList<User> activePlayers = lobby.getPlayers();
-    ArrayList<User> waitingPlayers = lobby.getSpectators();
 
     if (lobby.getPlayers().size() < 8) {
       if (!activePlayers.get(0).getUsername().equals(LoggedUser.getInstance().getUsername())) {
@@ -529,10 +526,6 @@ public class GamePageController extends GeneralPageController {
       }
       LoggedUser.getInstance().setStatus("active");
       lobby.setPlayers(activePlayers);
-    } else {
-      LoggedUser.getInstance().setStatus("waiting");
-      waitingPlayers.add(LoggedUser.getInstance());
-      lobby.setSpectators(waitingPlayers);
     }
 
     reloadPlayersUI();

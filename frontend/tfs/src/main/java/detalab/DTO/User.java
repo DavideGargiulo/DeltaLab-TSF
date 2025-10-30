@@ -45,4 +45,9 @@ public class User {
     this.status = status;
   }
 
+  @Override
+  public String toString() {
+    return "username='" + username;
+  }
+
 }

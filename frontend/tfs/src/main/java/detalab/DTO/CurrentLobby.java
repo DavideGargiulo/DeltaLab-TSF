@@ -48,4 +48,17 @@ public class CurrentLobby extends Lobby {
     this.spectators = spectators;
   }
 
+  @Override
+  public String toString() {
+    return "CurrentLobby{" +
+        "ID='" + getLobbyID() + '\'' +
+        ", users=" + getLobbyUsers() +
+        ", rotation='" + getLobbyRotation() + '\'' +
+        ", creator='" + getLobbyCreator() + '\'' +
+        ", status='" + getLobbyStatus() + '\'' +
+        ", playingUsers=" + playingUsers +
+        ", spectators=" + spectators +
+        '}';
+  }
+
 }
