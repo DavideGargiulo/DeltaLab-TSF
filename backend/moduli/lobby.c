@@ -792,7 +792,7 @@ char* joinLobby(const char* lobbyId, int playerId) {
   PQclear(countRes);
 
   /* Determine new player status */
-  const char* newStatus = (activePlayers < MAX_PLAYERS) ? STATUS_ACTIVE : STATUS_WAITING;
+  const char* newStatus = (activePlayers >= MAX_PLAYERS) ? STATUS_WAITING : STATUS_ACTIVE;
   int position = 0;
 
   if (strcmp(newStatus, STATUS_WAITING) == 0) {

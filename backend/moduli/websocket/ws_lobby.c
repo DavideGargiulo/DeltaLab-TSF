@@ -327,6 +327,12 @@ static void handle_action_join_spectator(struct mg_connection *c, struct mg_ws_m
            "{\"type\":\"spectator_joined\",\"playerId\":\"%s\",\"username\":\"%s\",\"spectators\":%d}",
            player_id, username, r->spectators_count);
   room_broadcast(r, bcast);
+
+  char *error_msg = NULL;
+  db_on_player_join(lobby_id, atoi(player_id), &error_msg);
+  if (error_msg) {
+    free(error_msg);
+  }
 }
 
 
