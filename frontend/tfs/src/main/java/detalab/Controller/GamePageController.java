@@ -18,7 +18,6 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
 import detalab.DTO.CurrentLobby;
 import detalab.DTO.LanguageHelper;
-import detalab.DTO.Lobby;
 import detalab.DTO.LobbyWebSocketClient;
 import detalab.DTO.LoggedUser;
 import detalab.DTO.User;
@@ -347,7 +346,7 @@ public class GamePageController extends GeneralPageController {
         waitingPlayers.removeIf(user -> user.getId() == playerId);
         lobby.setSpectators(waitingPlayers);
         Platform.runLater(() -> {
-          waitingList.getItems().removeIf(username -> username.equals(msg.optString("username")));
+          reloadSpectatorsList();
         });
       }
 
@@ -409,7 +408,7 @@ public class GamePageController extends GeneralPageController {
       String message = msg.optString("message");
       System.out.println("[ERROR] " + message);
       Platform.runLater(() -> {
-        showAlert(AlertType.ERROR, "Start Error", "Unable to start the game", message);
+        showAlert(AlertType.ERROR, "Error", "Server Error", message);
       });
     });
 
@@ -441,6 +440,39 @@ public class GamePageController extends GeneralPageController {
 
     });
 
+    // Handler per promozione giocatore
+    client.onMessageType("spectator_promoted", msg -> {
+
+      int playerId = Integer.parseInt(msg.optString("playerId"));
+      ArrayList<User> waitingPlayers = lobby.getSpectators();
+      ArrayList<User> activePlayers = lobby.getPlayers();
+
+      User promotedUser;
+      for (User user : waitingPlayers) {
+        if (user.getId() == playerId) {
+          promotedUser = user;
+          waitingPlayers.remove(user);
+          activePlayers.add(promotedUser);
+          lobby.setPlayers(activePlayers);
+          lobby.setSpectators(waitingPlayers);
+          Platform.runLater(() -> {
+            reloadPlayersUI();
+            reloadSpectatorsList();
+          });
+          break;
+        }
+      }
+
+    });
+
+  }
+
+  private void reloadSpectatorsList() {
+    ArrayList<User> waitingPlayers = lobby.getSpectators();
+    waitingList.getItems().clear();
+    for (User waitingUser : waitingPlayers) {
+      waitingList.getItems().add(waitingUser.getUsername());
+    }
   }
 
   private void deHighlightAllPlayers() {
@@ -520,7 +552,7 @@ public class GamePageController extends GeneralPageController {
 
     ArrayList<User> activePlayers = lobby.getPlayers();
 
-    if (lobby.getPlayers().size() < 8) {
+    if (lobby.getLobbyStatus().equals("waiting") && lobby.getPlayers().size() < 8) {
       if (!activePlayers.get(0).getUsername().equals(LoggedUser.getInstance().getUsername())) {
         activePlayers.add(LoggedUser.getInstance());
       }

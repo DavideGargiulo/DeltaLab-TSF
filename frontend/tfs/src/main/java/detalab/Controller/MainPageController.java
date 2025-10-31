@@ -202,6 +202,10 @@ public class MainPageController extends GeneralPageController {
       showAlert(AlertType.INFORMATION, "Codice mancante", null, "Inserisci un codice per unirti a una lobby.");
       return;
     }
+    joinLobbyWithID(lobbyID);
+  }
+
+  private void joinLobbyWithID(String lobbyID) {
 
     try {
 
@@ -274,9 +278,9 @@ public class MainPageController extends GeneralPageController {
 
       CurrentLobby.getInstance(lobby, players, spectators);
 
-      System.out.println("\n\n----------\n\n");
-      System.out.println(CurrentLobby.getInstance());
-      System.out.println("\n\n----------\n\n");
+      // System.out.println("\n\n----------\n\n");
+      // System.out.println(CurrentLobby.getInstance());
+      // System.out.println("\n\n----------\n\n");
 
       App.setRoot("game_screen");
     } catch (Exception e) {
@@ -398,7 +402,7 @@ public class MainPageController extends GeneralPageController {
         if (event.getClickCount() == 2 && (!row.isEmpty())) {
           Lobby lobby = row.getItem();
           System.out.println(lobby.toString());
-          enterLobby(lobby);
+          joinLobbyWithID(lobby.getLobbyID());
         }
       });
       return row;
