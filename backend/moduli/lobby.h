@@ -58,4 +58,6 @@ char* endGame(const char* lobbyId, int creatorId);
 
 char* getLobbyRotation(const char* lobbyId);
 
+bool promoteNextWaitingPlayer(const char* lobbyId);
+
 #endif

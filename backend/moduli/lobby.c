@@ -840,7 +840,8 @@ char* joinLobby(const char* lobbyId, int playerId) {
   return createJsonSuccess("Giocatore aggiunto con successo", content);
 }
 
-static bool promoteNextWaitingPlayer(DBConnection* conn, const char* lobbyId) {
+bool promoteNextWaitingPlayer(const char* lobbyId) {
+  DBConnection* conn = connectToDatabase();
   if (!conn || !lobbyId) {
     return false;
   }
@@ -865,7 +866,8 @@ static bool promoteNextWaitingPlayer(DBConnection* conn, const char* lobbyId) {
   const char* promoteParams[2] = { lobbyId, nextPlayerId };
 
   PGresult* promoteRes = dbExecutePrepared(conn, promoteSql, 2, promoteParams);
-  bool success = (promoteRes != NULL);
+  bool success = (promoteRes != NULL &&
+                  PQresultStatus(promoteRes) == PGRES_COMMAND_OK);
 
   if (promoteRes) PQclear(promoteRes);
   PQclear(nextRes);
@@ -979,7 +981,7 @@ char* leaveLobby(const char* lobbyId, int playerId) {
 
   /* If active player left, promote next waiting player */
   if (wasActive) {
-    promoteNextWaitingPlayer(conn, lobbyId);
+    promoteNextWaitingPlayer(lobbyId);
   }
 
   if (!dbCommitTransaction(conn)) {

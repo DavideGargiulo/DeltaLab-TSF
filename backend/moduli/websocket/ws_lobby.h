@@ -20,3 +20,4 @@ bool db_on_player_join(const char *lobby_id, int player_id, char **error_msg);
 void db_on_lobby_full(const char *lobby_id, int players_count);
 bool db_on_game_start(const char *lobby_id, int creator_id);
 bool db_on_game_end(const char *lobby_id, int creator_id);
+bool db_on_spectator_promoted(const char* lobby_id, int player_id);

@@ -202,11 +202,22 @@ static void promote_spectators_if_slots(struct lobby_room *r) {
     }
     r->players_count++;
 
+    int player_id = atoi(sp->player_id);
+
+    bool result = db_on_spectator_promoted(r->id, player_id);
+
+    if (!result) {
+      char err[256];
+      snprintf(err, sizeof(err), "{\"type\":\"error\",\"message\":\"Impossibile promuovere lo spettatore\"}");
+      mg_ws_send(c, err, strlen(err), WEBSOCKET_OP_TEXT);
+    }
+
     char bcast[256];
     snprintf(bcast, sizeof(bcast),
              "{\"type\":\"spectator_promoted\",\"playerId\":\"%s\",\"username\":\"%s\",\"players\":%d,\"spectators\":%d}",
              sp->player_id, sp->username, r->players_count, r->spectators_count);
     room_broadcast(r, bcast);
+
   }
 }
 
@@ -797,39 +808,6 @@ static void handle_action_start(struct mg_connection *c, struct conn_state *st) 
   room_broadcast(r, msg);
 }
 
-static void handle_action_endgame(struct mg_connection *c, struct conn_state *st) {
-  if (!*st->lobby_id) return;
-  struct lobby_room *r = find_room(st->lobby_id);
-  if (!r) return;
-
-  if (!is_creator(r, st->player_id)) {
-    const char *err = "{\"type\":\"error\",\"message\":\"Solo il creatore può terminare la partita\"}";
-    mg_ws_send(c, err, strlen(err), WEBSOCKET_OP_TEXT);
-    return;
-  }
-
-  int creator_id = atoi(st->player_id);
-  if (!db_on_game_end(st->lobby_id, creator_id)) {
-    const char *err = "{\"type\":\"error\",\"message\":\"Errore nella terminazione della partita\"}";
-    mg_ws_send(c, err, strlen(err), WEBSOCKET_OP_TEXT);
-    return;
-  }
-
-  r->current_player_id[0] = 0;
-  r->game_active = false;  // ✅ Disattiva il gioco
-
-  for (struct ws_client *cl = r->clients; cl; cl = cl->next) {
-    cl->has_played = false;
-  }
-
-  char msg[4600];
-  promote_spectators_if_slots(r);
-  snprintf(msg, sizeof(msg),
-           "{\"type\":\"game_ended\",\"message\":\"La partita è terminata\",\"text\":\"%s\"}",
-           r->full_story);  // ✅ USA full_story
-  room_broadcast(r, msg);
-}
-
 // ======= Handler WS =======
 
 static void ws_handler(struct mg_connection *c, int ev, void *ev_data) {
@@ -857,7 +835,6 @@ static void ws_handler(struct mg_connection *c, int ev, void *ev_data) {
       else if (json_has(wm, "action", "state"))  handle_action_state(c, st);
       else if (json_has(wm, "action", "setmax")) handle_action_setmax(c, wm, st);
       else if (json_has(wm, "action", "start")) handle_action_start(c, st);
-      else if (json_has(wm, "action", "end")) handle_action_endgame(c, st);
       else if (json_has(wm, "action", "join_spectator")) handle_action_join_spectator(c, wm, st);
       else {
         const char *err = "{\"type\":\"error\",\"message\":\"Unknown action\"}";
@@ -1012,4 +989,12 @@ bool db_on_game_end(const char *lobby_id, int creator_id) {
 
 void db_on_lobby_full(const char *lobby_id, int players_count) {
   printf("[DB] lobby FULL id=%s players=%d\n", lobby_id, players_count);
+}
+
+bool db_on_spectator_promoted(const char* lobby_id, int player_id) {
+  if (!lobby_id || player_id <= 0) return false;
+
+  bool result = promoteNextWaitingPlayer(lobby_id);
+
+  return result;
 }
