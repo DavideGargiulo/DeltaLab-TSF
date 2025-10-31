@@ -209,7 +209,9 @@ static void promote_spectators_if_slots(struct lobby_room *r) {
     if (!result) {
       char err[256];
       snprintf(err, sizeof(err), "{\"type\":\"error\",\"message\":\"Impossibile promuovere lo spettatore\"}");
-      mg_ws_send(c, err, strlen(err), WEBSOCKET_OP_TEXT);
+      if (sp->c && !sp->c->is_closing) {
+        mg_ws_send(sp->c, err, strlen(err), WEBSOCKET_OP_TEXT);
+      }
     }
 
     char bcast[256];
@@ -617,6 +619,10 @@ static void handle_action_leave(struct mg_connection *c, struct conn_state *st) 
       remove_spectator(r, c, st->player_id);
     }
 
+    if (!r->game_active) {
+      promote_spectators_if_slots(r);
+    }
+
     // Broadcast che il giocatore è uscito
     char msg[5000];
     snprintf(msg, sizeof(msg),
@@ -992,9 +998,21 @@ void db_on_lobby_full(const char *lobby_id, int players_count) {
 }
 
 bool db_on_spectator_promoted(const char* lobby_id, int player_id) {
-  if (!lobby_id || player_id <= 0) return false;
+  if (!lobby_id || player_id <= 0) {
+    fprintf(stderr, "[DB_ERROR] Parametri non validi: lobby_id=%s, player_id=%d\n",
+            lobby_id ? lobby_id : "NULL", player_id);
+    return false;
+  }
 
+  // ✅ Usa la funzione corretta dal DB
   bool result = promoteNextWaitingPlayer(lobby_id);
+
+  if (!result) {
+    fprintf(stderr, "[DB_ERROR] Promozione fallita per lobby %s, player %d\n",
+            lobby_id, player_id);
+  } else {
+    fprintf(stderr, "[DB_SUCCESS] Spettatore promosso per lobby %s\n", lobby_id);
+  }
 
   return result;
 }

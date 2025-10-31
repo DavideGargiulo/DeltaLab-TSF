@@ -841,8 +841,21 @@ char* joinLobby(const char* lobbyId, int playerId) {
 }
 
 bool promoteNextWaitingPlayer(const char* lobbyId) {
+  if (!lobbyId) {
+    fprintf(stderr, "[ERROR] promoteNextWaitingPlayer: lobbyId NULL\n");
+    return false;
+  }
+
   DBConnection* conn = connectToDatabase();
-  if (!conn || !lobbyId) {
+  if (!conn) {
+    fprintf(stderr, "[ERROR] promoteNextWaitingPlayer: connessione DB fallita\n");
+    return false;
+  }
+
+  // ✅ Inizia una transazione per evitare race conditions
+  if (!dbBeginTransaction(conn)) {
+    fprintf(stderr, "[ERROR] promoteNextWaitingPlayer: impossibile iniziare transazione\n");
+    dbDisconnect(conn);
     return false;
   }
 
@@ -853,12 +866,23 @@ bool promoteNextWaitingPlayer(const char* lobbyId) {
   const char* nextParams[1] = { lobbyId };
 
   PGresult* nextRes = dbExecutePrepared(conn, nextSql, 1, nextParams);
-  if (!nextRes || PQntuples(nextRes) == 0) {
-    if (nextRes) PQclear(nextRes);
+  if (!nextRes) {
+    fprintf(stderr, "[ERROR] promoteNextWaitingPlayer: query fallita per lobby %s\n", lobbyId);
+    dbRollbackTransaction(conn);
+    dbDisconnect(conn);
+    return false;
+  }
+
+  if (PQntuples(nextRes) == 0) {
+    // Nessuno spettatore da promuovere (non è un errore)
+    PQclear(nextRes);
+    dbRollbackTransaction(conn);
+    dbDisconnect(conn);
     return false;
   }
 
   const char* nextPlayerId = PQgetvalue(nextRes, 0, 0);
+  fprintf(stderr, "[INFO] Promuovendo player_id=%s per lobby=%s\n", nextPlayerId, lobbyId);
 
   /* Promote player */
   const char* promoteSql = "UPDATE lobby_players SET status = 'active', position = 0 "
@@ -872,6 +896,20 @@ bool promoteNextWaitingPlayer(const char* lobbyId) {
   if (promoteRes) PQclear(promoteRes);
   PQclear(nextRes);
 
+  // ✅ Commit o rollback in base al risultato
+  if (success) {
+    if (!dbCommitTransaction(conn)) {
+      fprintf(stderr, "[ERROR] promoteNextWaitingPlayer: commit fallito\n");
+      dbDisconnect(conn);
+      return false;
+    }
+    fprintf(stderr, "[SUCCESS] Player %s promosso con successo\n", nextPlayerId);
+  } else {
+    fprintf(stderr, "[ERROR] promoteNextWaitingPlayer: UPDATE fallito\n");
+    dbRollbackTransaction(conn);
+  }
+
+  dbDisconnect(conn);
   return success;
 }
 
@@ -979,10 +1017,6 @@ char* leaveLobby(const char* lobbyId, int playerId) {
   }
   PQclear(deleteRes);
 
-  /* If active player left, promote next waiting player */
-  if (wasActive) {
-    promoteNextWaitingPlayer(lobbyId);
-  }
 
   if (!dbCommitTransaction(conn)) {
     dbDisconnect(conn);
