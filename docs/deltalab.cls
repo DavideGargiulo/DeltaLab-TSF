@@ -123,7 +123,7 @@
 
 % A beautiful background for the titlepage.
 \newcommand\BackgroundPic[1]{\put(0,0){\parbox[b][\paperheight]{\paperwidth}{\vfill\centering\includegraphics[width=\paperwidth,height=\paperheight,keepaspectratio]{#1}\vfill}}}
-\AtBeginEnvironment{titlepage}{\AddToShipoutPictureBG*{\transparent{0.1}\BackgroundPic{fibonacci.pdf}}}
+\AtBeginEnvironment{titlepage}{\AddToShipoutPictureBG*{\transparent{0.1}}}
 
 % Page numbering
 \newcommand{\pagenumber}[1]{{\setlength{\fboxsep}{5pt}\fbox[#1,lcolor=beaublue,rcolor=beaublue,tcolor=beaublue,bcolor=beaublue]{\fontsize{10pt}{10pt}\selectfont{\textcolor{gray!70!black}{\textsc{\thepage}}}}}}
