@@ -743,14 +743,6 @@ char* joinLobby(const char* lobbyId, int playerId) {
 
   const char* lobbyStatus = PQgetvalue(lobbyRes, 0, 1);
 
-  if (strcmp(lobbyStatus, STATUS_STARTED) == 0) {
-    PQclear(lobbyRes);
-    dbRollbackTransaction(conn);
-    dbDisconnect(conn);
-    return createJsonError("Lobby già avviata");
-  }
-  PQclear(lobbyRes);
-
   /* Check if player is already in lobby */
   const char* playerCheck = "SELECT status FROM lobby_players WHERE lobby_id = $1 AND player_id = $2";
 
@@ -791,8 +783,17 @@ char* joinLobby(const char* lobbyId, int playerId) {
   int activePlayers = atoi(PQgetvalue(countRes, 0, 0));
   PQclear(countRes);
 
+  const char* newStatus = NULL;
+
   /* Determine new player status */
-  const char* newStatus = (activePlayers >= MAX_PLAYERS) ? STATUS_WAITING : STATUS_ACTIVE;
+  if (strcmp(lobbyStatus, STATUS_STARTED) == 0) {
+    newStatus = STATUS_WAITING;
+  } else if (activePlayers >= MAX_PLAYERS) {
+    newStatus = STATUS_WAITING;
+  } else {
+    newStatus = STATUS_ACTIVE;
+  }
+
   int position = 0;
 
   if (strcmp(newStatus, STATUS_WAITING) == 0) {
@@ -1124,9 +1125,9 @@ char* endGame(const char* lobbyId, int creatorId) {
     return createJsonError("La partita è già terminata");
   }
 
-  // Aggiorna status a 'finished'
+  // Aggiorna status a 'waiting'
   const char* updateSql = "UPDATE lobby SET status = $1 WHERE id = $2";
-  const char* updateParams[2] = { "finished", lobbyId };
+  const char* updateParams[2] = { "waiting", lobbyId };
 
   PGresult* updateRes = dbExecutePrepared(conn, updateSql, 2, updateParams);
   if (!updateRes) {
