@@ -1,1 +1,32 @@
 \chapter{Introduzione}
+
+Questo progetto consiste nella realizzazione di un'applicazione client-server per poter permette di giocare con altri client al gioco del \textbf{telefono senza fili}.
+
+Le tecnologie richieste per quest'applicazione sono le seguenti:
+\begin{itemize}
+  \item \textbf{C}: linguaggio per il backend;
+  \item \textbf{Java}: linguaggio scelto per il frontend;
+  \item \textbf{JavaFx}: libreria per la realizzazione dell'interfaccia grafica in Java;
+  \item \textbf{Mongoose}: libreria per la gestione delle connessioni WebSocket in C;
+  \item \textbf{Docker}: strumento per la containerizzazione dell'applicazione;
+  \item \textbf{Maven}: strumento di gestione delle dipendenze per Java;
+  \item \textbf{PostgreSql}: sistema di gestione di database relazionali.
+\end{itemize}
+
+Ogni client può svolgere determinate azioni come:
+\begin{itemize}
+  \item Registrarsi al server;
+  \item Effettuare il login;
+  \item Creare una nuova partita;
+  \item Unirsi a una partita esistente;
+  \item Unirsi a una partita già in corso come spettatore;
+  \item Giocare.
+\end{itemize}
+
+Il server, invece, si occupa di:
+\begin{itemize}
+  \item Gestire le connessioni dei client;
+  \item Mantenere lo stato delle partite;
+  \item Gestire la logica di gioco;
+  \item Comunicare con i client tramite WebSocket.
+\end{itemize}

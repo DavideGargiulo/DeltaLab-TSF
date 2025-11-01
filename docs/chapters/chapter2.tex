@@ -1,0 +1,19 @@
+\chapter{Architettura Generale}
+
+L'architettura dell'applicazione è basata sul modello \textbf{client-server}, in cui il \textbf{server} gestisce la logica di gioco e le connessioni dei \textbf{client}, mentre i \textbf{client} forniscono l'interfaccia utente e comunicano con il \textbf{server} tramite WebSocket.
+
+Il \textbf{server} è implementato in C utilizzando la libreria Mongoose per gestire le connessioni WebSocket. Si occupa di mantenere lo stato delle partite, gestire la logica di gioco e comunicare con i \textbf{client}.
+
+La scelta della libreria \textbf{Mongoose} è stata dettata dalla sua leggerezza e facilità d'uso, inoltre supporta nativamente il protocollo WebSocket, rendendo più semplice l'implementazione della comunicazione in tempo reale tra \textbf{client} e \textbf{server}.
+Inoltre la comunicazione tramite WebSocket viene gestita tramite protocollo HTTP e oggetti JSON, facilitando l'interscambio di dati strutturati tra le due parti.
+
+I dati rilevanti sono salvati in un database \textbf{PostgreSQL}, che offre robustezza e scalabilità per la gestione delle informazioni degli utenti e delle partite.
+Il nostro database contiene due tabelle principali, ovvero la tabella \textbf{users} e la tabella \textbf{lobby}.
+
+\begin{itemize}
+  \item La tabella \textbf{users} contiene le informazioni degli utenti registrati, come username, password (hashata per motivi di sicurezza).
+  \item La tabella \textbf{lobby} contiene le informazioni delle lobby create dai vari utenti, come l'ID della lobby, l'ID del creatore, lo stato della lobby (in attesa, in corso, terminata) e il numero di giocatori attuali.
+\end{itemize}
+Inoltre la scelta di PostgreSQL è derivata dal fatto che tutti i membri del team avevano già esperienza con questo sistema di gestione di database relazionali, facilitando così la fase di sviluppo e integrazione con il backend in C.
+
+Per combinare le informazioni tra le due tabelle, utilizziamo una terza tabella \textbf{lobby\_players}, che funge da tabella di collegamento tra gli utenti e le lobby. Questa tabella contiene gli ID degli utenti e gli ID delle lobby a cui sono associati, ma anche il loro status (attivo, spettatore).

@@ -115,6 +115,8 @@
 \addtolength{\footskip}{10pt}
 \addtolength{\textheight}{-20pt-1ex-\mylength}
 
+\setlength{\parskip}{0.5em}
+
 % Par indent modifications
 \setlength{\parindent}{0pt}
 

@@ -1,0 +1,27 @@
+\chapter{Struttura del codice}
+
+In questo capitolo viene descritta l'architettura generale del codice, sia back-end scritto in C, sia front-end scritto in Java,  illustrando le principali componenti e il loro funzionamento all'interno dell'applicazione.
+
+Nella root del progetto è presente il file \textbf{docker-compose.yml} responsabile dell'orchestrazione dei vari container Docker che compongono l'applicazione. Questo file definisce i servizi necessari per eseguire l'applicazione, tra cui il servizio \textbf{backend} (server C), il servizio \textbf{frontend} (applicazione JavaFX) e il servizio \textbf{database} (PostgreSQL).
+
+\section{Struttura dei file back-end}
+La struttura dei file del codice back-end è organizzata in modo da separare le diverse funzionalità e facilitare la manutenzione del codice. Nella cartella principale del \textbf{back-end} troviamo il \textbf{Dockerfile} dove abbiamo la configurazione per la creazione dell'immagine Docker del server, dove sono specificate le dipendenze necessarie, come il sistema operativo, la libreria Mongoose per la gestione delle connessioni WebSocket, la libreria \textbf{libpq-fe.h} per l'interfacciamento con il database PostgreSQL e gcc come compilatore C, responsabile della compilazione di tutti i sorgenti C del progetto.
+Inoltre troviamo il file \textbf{server.c} che rappresenta il file principale dell'applicazione.
+
+Troviamo poi una cartella \textbf{controllers} che contiene tutti i file responsabili del routing delle richieste ricevute dai client, gestendo le varie operazioni come la registrazione, il login, la creazione di lobby.
+Inoltre troviamo una cartella chiamata \textbf{moduli} che contiene i file responsabili della logica di business dell'applicazione, come la gestione delle lobby, degli utenti e delle partite. Questi moduli interagiscono con il database PostgreSQL per salvare e recuperare i dati necessari.
+Infine, nella cartella \textbf{moduli}, troviamo un'ultima sottocartella chiamata \textbf{websocket} che contiene i file specifici per la gestione delle comunicazioni WebSocket tra il server e i client, implementando le funzionalità d'invio e ricezione dei messaggi in tempo reale.
+
+\newpage
+
+\section{Struttura dei file front-end}
+
+La struttura dei file del codice front-end è organizzata in modo da separare le classi di gestione delle varie schermate dagli \textbf{utils} e i \textbf{DTO}.
+
+All'interno della cartella principale del \textbf{front-end} troviamo la cartella \textbf{Controller} che contiene tutte le classi responsabili della gestione delle varie schermate dell'applicazione e dell'interazione con l'utente. Ogni classe controller è associata a una specifica schermata, come la schermata di login, la schermata di registrazione, la schermata della lobby e la schermata di gioco.
+Inoltre, troviamo la cartella \textbf{DTO} (Data Transfer Object) che contiene le classi utilizzate per il trasferimento dei dati tra il front-end e il back-end. Queste classi rappresentano le strutture dati necessarie per inviare e ricevere informazioni, come i dettagli dell'utente, le informazioni della lobby.
+
+Tra gli \textbf{utils}, troviamo la classe \textbf{LobbyWebSocketClient} che si occupa di gestire la creazione di WebSocket e la ricezione/invio di messaggi tramite la stessa.
+Troviamo anche la classe \textbf{LanguageHelper} che si occupa della conversazione tra il client e l'API di \textbf{LibreTranslate} per la traduzione dell'UI e dei messaggi di gioco.
+
+Infine possiamo trovare la cartella \textbf{resources} che contiene immagini, file fxml e css per la creazione e personalizzazione dell'interfaccia utente.
