@@ -116,6 +116,11 @@ Questo progetto è rilasciato sotto licenza MIT. Vedi il file [LICENSE](LICENSE)
   </tr>
 </table>
 
+## Documentazione
+
+Per visualizzare la documentazione del progetto, cliccare [qui](https://github.com/DavideGargiulo/DeltaLab-TSF/blob/main/docs/main.pdf)
+
+
 ## 🎓 Progetto Universitario
 
 Progetto realizzato per il corso di **Laboratorio di Sistemi Operativi**
