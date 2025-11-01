@@ -29,6 +29,7 @@ Telefono Senza Fili è un gioco multiplayer dove i giocatori si alternano nello 
 
 - Docker e Docker Compose
 - Java 17 o superiore
+- JavaFX 24.0.1 o superiore
 - Maven
 
 ### Istruzioni
@@ -116,7 +117,7 @@ Questo progetto è rilasciato sotto licenza MIT. Vedi il file [LICENSE](LICENSE)
   </tr>
 </table>
 
-## Documentazione
+## 📖 Documentazione
 
 Per visualizzare la documentazione del progetto, cliccare [qui](https://github.com/DavideGargiulo/DeltaLab-TSF/blob/main/docs/main.pdf)
 
