@@ -1,0 +1,48 @@
+\chapter{Sistema di Traduzione}
+
+\section{Integrazione con LibreTranslate}
+
+Una caratteristica distintiva dell'applicazione è il supporto multilingua attraverso l'integrazione con l'API di LibreTranslate, un servizio di traduzione automatica open-source. Questo permette ai giocatori di utilizzare l'applicazione nella loro lingua preferita e facilita la comunicazione in partite con giocatori di diverse nazionalità.
+
+\section{LanguageHelper}
+
+La classe \textbf{LanguageHelper} implementa la logica di interazione con l'API di LibreTranslate. Le sue principali funzionalità includono:
+
+\begin{itemize}
+  \item \textbf{Traduzione dall'inglese a una lingua target}: Utilizza l'endpoint di traduzione dell'API per convertire il testo dall'inglese alla lingua selezionata dall'utente.
+  \item \textbf{Traduzione da una lingua sorgente all'inglese}: Utilizza l'endpoint di traduzione dell'API per convertire il testo da una lingua sorgente a inglese.
+\end{itemize}
+
+\section{Flusso di Traduzione}
+
+Il processo di traduzione avviene come segue:
+
+\subsection{Traduzione dell'Interfaccia}
+In fase di registrazione, l'utente seleziona la lingua preferita. A questo punto:
+\begin{enumerate}
+  \item Controlla se la lingua selezionata è inglese; in tal caso, non è necessaria alcuna traduzione;
+  \item Se la lingua è diversa dall'inglese, l'applicazione invia una richiesta all'API di LibreTranslate per tradurre tutti i testi dell'interfaccia;
+  \item Riceve i testi tradotti dall'API;
+  \item Aggiorna l'interfaccia con i testi tradotti.
+\end{enumerate}
+
+\subsection{Traduzione durante il Gioco}
+Durante una partita, quando un giocatore inserisce una frase:
+\begin{enumerate}
+  \item L'applicazione verifica la lingua dell'utente;
+  \item Se la lingua è diversa dall'inglese, invia la frase all'API di LibreTranslate per tradurla in inglese;
+  \item Riceve la frase tradotta dall'API;
+  \item Invia la frase tradotta al server di gioco per la validazione;
+  \item Riceve la risposta dal server
+  \item Se necessario, traduce la risposta del server nella lingua dell'utente seguendo lo stesso processo inverso.
+  \item Mostra la risposta tradotta all'utente.
+\end{enumerate}
+
+\section{Gestione degli Errori di Traduzione}
+
+Il sistema implementa diverse strategie per gestire eventuali errori durante il processo di traduzione:
+\begin{itemize}
+  \item Se l'API non è disponibile, viene mostrato il testo in inglese;
+  \item Gli errori vengono loggati per permettere il debugging;
+  \item L'utente viene notificato in caso di problemi persistenti.
+\end{itemize}

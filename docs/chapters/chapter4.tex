@@ -1,0 +1,38 @@
+\chapter{Implementazione del Backend}
+
+\section{Server C e Mongoose}
+
+Il server è implementato in C utilizzando la libreria Mongoose, che fornisce un framework leggero e efficiente per la gestione delle connessioni HTTP e WebSocket. Il file \textbf{server.c} rappresenta il punto di ingresso dell'applicazione e si occupa dell'inizializzazione del server, della configurazione delle route e della gestione del ciclo di vita dell'applicazione.
+
+All'avvio, il server esegue le seguenti operazioni:
+\begin{itemize}
+  \item Configura il gestore di eventi Mongoose per processare le richieste HTTP e WebSocket;
+  \item Registra le route per le varie operazioni (registrazione, login, gestione lobby);
+  \item Avvia il loop principale che rimane in ascolto delle connessioni in arrivo.
+\end{itemize}
+
+La comunicazione tra client e server avviene tramite messaggi JSON strutturati, che vengono parsati e processati dal server. Ogni messaggio contiene un campo \texttt{type} che identifica il tipo di operazione richiesta e eventuali parametri necessari per l'esecuzione dell'operazione.
+
+\section{Gestione del Database}
+
+La connessione al database PostgreSQL viene stabilita quando è necessario utilizzare il database. Il modulo di gestione del database espone funzioni per eseguire query SQL e recuperare i risultati in modo sicuro, prevenendo attacchi di SQL injection attraverso l'uso di prepared statements.
+
+Le principali operazioni sul database includono:
+\begin{itemize}
+  \item \textbf{Inserimento utenti}: quando un nuovo utente si registra, i suoi dati vengono inseriti nella tabella \texttt{users} con la password hashata utilizzando un algoritmo di hashing sicuro;
+  \item \textbf{Autenticazione}: durante il login, viene verificata la corrispondenza tra username e password hashata;
+  \item \textbf{Gestione lobby}: creazione, aggiornamento e cancellazione delle lobby nella tabella \texttt{lobby};
+  \item \textbf{Associazione giocatori}: gestione delle relazioni molti-a-molti tra utenti e lobby attraverso la tabella \texttt{lobby\_players}.
+\end{itemize}
+
+\section{Controller e Routing}
+
+La cartella \textbf{controllers} contiene i file che implementano la logica di routing delle richieste HTTP. Ogni controller è responsabile di gestire un insieme specifico di operazioni correlate. I principali controller implementati sono:
+
+\begin{itemize}
+  \item \textbf{auth\_controller.c}: gestisce le operazioni di autenticazione, incluse registrazione e login;
+  \item \textbf{lobby\_controller.c}: gestisce la creazione, l'aggiornamento e la cancellazione delle lobby;
+  \item \textbf{user\_controller.c}: gestisce le operazioni relative agli utenti, per recuperare le informazioni dell'utente.
+\end{itemize}
+
+Ogni controller implementa funzioni che ricevono come parametro la connessione Mongoose e il messaggio HTTP, estraggono i parametri necessari, invocano la logica di business appropriata e restituiscono una risposta JSON al client.

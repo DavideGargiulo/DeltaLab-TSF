@@ -1,0 +1,63 @@
+\chapter{Implementazione del Frontend}
+
+\section{Architettura JavaFX}
+
+Il frontend dell'applicazione è sviluppato in JavaFX, un framework moderno per la creazione di interfacce grafiche in Java. L'architettura segue il pattern MVC (Model-View-Controller), dove le viste sono definite in file FXML, i controller gestiscono la logica dell'interfaccia e i modelli rappresentano i dati.
+
+La struttura dell'applicazione JavaFX è organizzata come segue:
+\begin{itemize}
+  \item \textbf{View}: file FXML che definiscono la struttura e il layout delle schermate;
+  \item \textbf{Controller}: classi Java che gestiscono gli eventi dell'interfaccia utente e coordinano l'interazione con il backend;
+  \item \textbf{Model/DTO}: classi che rappresentano i dati trasferiti tra frontend e backend;
+  \item \textbf{Utils}: classi di utilità per funzionalità comuni come la gestione WebSocket e la traduzione.
+\end{itemize}
+
+\section{Schermate Principali}
+
+L'applicazione è composta da diverse schermate, ciascuna con una specifica funzionalità:
+
+\subsection{Schermata di Login}
+La schermata di login permette all'utente di autenticarsi inserendo username e password. Il controller associato valida i dati inseriti e invia una richiesta HTTP POST al server con le credenziali. In caso di successo, l'utente viene reindirizzato alla schermata principale; in caso di errore, viene visualizzato un messaggio appropriato.
+
+\subsection{Schermata di Registrazione}
+La schermata di registrazione consente a nuovi utenti di creare un account. Il controller verifica che i campi siano compilati correttamente, che la password soddisfi i requisiti minimi di sicurezza. Successivamente, invia una richiesta al server per creare il nuovo utente.
+
+\subsection{Schermata Lobby}
+La schermata lobby mostra l'elenco delle partite disponibili e permette all'utente di:
+\begin{itemize}
+  \item Visualizzare le lobby esistenti con informazioni sul numero di giocatori e lo stato;
+  \item Creare una nuova lobby specificando il senso di rotazione;
+  \item Unirsi a una lobby esistente come giocatore;
+  \item Unirsi a una partita in corso come spettatore.
+\end{itemize}
+
+La lista delle lobby viene aggiornata tramite un bottone dedicato, che invia richieste HTTP al server, garantendo che l'utente visualizzi sempre informazioni aggiornate.
+
+\subsection{Schermata di Gioco}
+La schermata di gioco rappresenta l'interfaccia principale durante una partita. Gli elementi principali includono:
+\begin{itemize}
+  \item Area di visualizzazione della frase corrente;
+  \item Barra per scrivere, a seconda del turno;
+  \item Lista dei giocatori partecipanti;
+\end{itemize}
+
+\section{Gestione WebSocket}
+
+La classe \textbf{LobbyWebSocketClient} estende la classe \texttt{WebSocketClient} fornita dalla libreria Java-WebSocket e implementa la logica per gestire la comunicazione in tempo reale con il server.
+
+I principali metodi implementati sono:
+\begin{itemize}
+  \item \texttt{onOpen()}: invocato quando la connessione WebSocket viene stabilita con successo;
+  \item \texttt{onMessage()}: riceve i messaggi dal server e li processa in base al tipo;
+  \item \texttt{onClose()}: gestisce la chiusura della connessione;
+  \item \texttt{onError()}: gestisce eventuali errori durante la comunicazione;
+  \item \texttt{send()}: invia messaggi JSON al server.
+\end{itemize}
+
+Durante una partita, il WebSocket viene utilizzato per:
+\begin{itemize}
+  \item Ricevere aggiornamenti in tempo reale sullo stato della partita;
+  \item Inviare le azioni del giocatore (frasi scritte);
+  \item Sincronizzare i turni tra i giocatori;
+  \item Notificare l'ingresso o l'uscita di giocatori.
+\end{itemize}

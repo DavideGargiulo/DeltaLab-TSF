@@ -1,0 +1,53 @@
+\chapter{Containerizzazione con Docker}
+
+\section{Docker Compose}
+
+L'applicazione utilizza Docker Compose per orchestrare i vari servizi necessari al funzionamento del sistema. Il file \textbf{docker-compose.yml} definisce tre servizi principali:
+
+\subsection{Servizio Database}
+Il servizio database utilizza l'immagine ufficiale di PostgreSQL e configura:
+\begin{itemize}
+  \item Le credenziali di accesso (username, password, nome del database);
+  \item Il volume persistente per salvare i dati anche dopo il riavvio del container;
+  \item La porta esposta per permettere la connessione dal servizio backend;
+\end{itemize}
+
+\subsection{Servizio Backend}
+Il servizio backend compila ed esegue il server C:
+\begin{itemize}
+  \item Utilizza un'immagine base con GCC e le librerie necessarie;
+  \item Copia i file sorgente nel container;
+  \item Compila l'applicazione all'avvio;
+  \item Espone la porta per le connessioni WebSocket;
+  \item Dipende dal servizio database e attende che sia pronto prima di avviarsi.
+\end{itemize}
+
+\section{Dockerfile del Backend}
+
+Il Dockerfile del backend è strutturato in più stage per ottimizzare le dimensioni dell'immagine finale:
+
+\begin{enumerate}
+  \item \textbf{Build stage}: installa le dipendenze di compilazione e compila il codice sorgente;
+  \item \textbf{Runtime stage}: copia solo i binari necessari dal build stage e le librerie runtime richieste.
+\end{enumerate}
+
+Questo approccio multi-stage riduce significativamente le dimensioni dell'immagine finale, includendo solo ciò che è strettamente necessario per l'esecuzione dell'applicazione.
+
+\section{Networking}
+
+I container comunicano tra loro attraverso una rete Docker personalizzata. Questo garantisce:
+\begin{itemize}
+  \item Isolamento dalla rete host;
+  \item Risoluzione DNS automatica tra i servizi;
+  \item Sicurezza migliorata limitando l'esposizione delle porte;
+  \item Facilità di configurazione senza hard-coding degli IP.
+\end{itemize}
+
+\section{Volumi Persistenti}
+
+L'applicazione utilizza volumi Docker per garantire la persistenza dei dati:
+\begin{itemize}
+  \item \textbf{postgres\_data}: memorizza i dati del database PostgreSQL.
+\end{itemize}
+
+Il volume è gestito da Docker e sopravvive alla rimozione dei container, garantendo che i dati degli utenti e le configurazioni non vengano persi.

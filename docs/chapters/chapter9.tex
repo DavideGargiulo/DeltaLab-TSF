@@ -1,0 +1,13 @@
+\chapter{Sicurezza}
+
+\section{Autenticazione e Autorizzazione}
+
+La sicurezza dell'applicazione è garantita attraverso diverse misure implementate sia lato server che lato client.
+
+\subsection{Hashing delle Password}
+Le password degli utenti non vengono mai salvate in chiaro nel database. Quando un utente si registra, la password viene processata attraverso un algoritmo di hashing crittografico sicuro prima di essere memorizzata. Durante il login, la password inserita viene hashata e confrontata con quella salvata nel database.
+
+\section{Prevenzione di Attacchi Comuni}
+
+\subsection{SQL Injection}
+Tutte le query al database utilizzano prepared statements, che separano la logica SQL dai dati forniti dall'utente. Questo previene attacchi di SQL injection, poiché i dati dell'utente vengono sempre trattati come valori e mai come codice eseguibile.

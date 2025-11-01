@@ -1,0 +1,68 @@
+\chapter{Logica di Gioco}
+
+\section{Regole del Telefono Senza Fili}
+
+Il gioco del telefono senza fili è un gioco collaborativo in cui i giocatori si alternano nello scrivere frasi, creando una catena di interpretazioni che spesso porta a risultati divertenti e inaspettati.
+
+Le regole del gioco sono le seguenti:
+\begin{enumerate}
+  \item Il primo giocatore scrive una frase iniziale;
+  \item Il secondo giocatore visualizza la frase e deve continuarla;
+  \item Il terzo giocatore visualizza il complessivo e deve continuare a sua volta;
+  \item Il processo continua fino a quando tutti i giocatori hanno partecipato;
+  \item Al termine, viene mostrata la sequenza completa per vedere come la frase si è trasformata.
+\end{enumerate}
+
+\section{Fasi della Partita}
+
+Una partita attraversa diverse fasi, gestite dal server:
+
+\subsection{Fase di Attesa}
+La partita rimane in fase di attesa finché non si raggiunge il numero minimo di giocatori richiesto. Durante questa fase, i giocatori possono entrare e uscire liberamente dalla lobby. Il creatore della lobby può decidere di avviare la partita manualmente quando il numero minimo di giocatori è raggiunto (minimo 4 giocatori).
+
+\subsection{Fase di Inizializzazione}
+Quando la partita viene avviata, il server:
+\begin{itemize}
+  \item Blocca l'ingresso di nuovi giocatori attivi (gli spettatori possono ancora unirsi);
+  \item Invia a tutti i client le informazioni iniziali della partita;
+\end{itemize}
+
+\newpage
+
+\subsection{Fase di Gioco}
+Durante ogni turno:
+\begin{itemize}
+  \item Un giocatore riceve la frase dal turno precedente o, se è il primo turno, scrive la frase iniziale;
+  \item Una volta completato, il contenuto viene inviato al server;
+  \item Il server passa la frase al giocatore successivo;
+  \item Gli altri giocatori e gli spettatori vedono un'indicazione di chi sta giocando.
+\end{itemize}
+
+\subsection{Fase Finale}
+Quando tutti i giocatori hanno completato i loro turni, la partita termina e viene mostrata la sequenza completa di frasi.
+
+\section{Gestione dei Turni}
+
+Il server mantiene lo stato di ogni partita in una struttura dati che include:
+\begin{itemize}
+  \item L'elenco dei giocatori e il loro ordine;
+  \item L'indice del giocatore corrente;
+  \item La catena di contenuti (frasi) prodotti finora;
+\end{itemize}
+
+Quando un giocatore completa il suo turno, il server:
+\begin{enumerate}
+  \item Lo aggiunge alla catena;
+  \item Incrementa l'indice del turno;
+  \item Notifica il giocatore successivo tramite WebSocket;
+\end{enumerate}
+
+\section{Gestione delle Disconnessioni}
+
+Il sistema è progettato per gestire le disconnessioni improvvise dei giocatori. Quando un client si disconnette:
+\begin{itemize}
+  \item Il server rileva la disconnessione tramite l'evento \texttt{onClose} del WebSocket;
+  \item Se è il turno del giocatore disconnesso, viene saltato automaticamente;
+  \item Gli altri giocatori vengono notificati della disconnessione;
+  \item Se il numero di giocatori attivi scende sotto il minimo richiesto, la partita continua fino a quando i giocatori rimasti hanno partecipato.
+\end{itemize}
