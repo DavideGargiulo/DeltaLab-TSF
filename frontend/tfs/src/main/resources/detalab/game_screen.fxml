@@ -14,7 +14,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.shape.Circle?>
 
-<BorderPane id="gamePage" fx:id="gamePage" minHeight="700" minWidth="1200" prefHeight="700" prefWidth="1200" stylesheets="@game_screen.css" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="detalab.Controller.GamePageController">
+<BorderPane id="gamePage" fx:id="gamePage" minHeight="700" minWidth="1200" prefHeight="700" prefWidth="1200" stylesheets="@game_screen.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="detalab.Controller.GamePageController">
 
     <!-- HEADER -->
     <top>
@@ -138,7 +138,7 @@
                 </StackPane>
 
                 <!-- Frase centrale -->
-                <Label fx:id="phraseLabel" alignment="CENTER" layoutX="360.0" layoutY="260.0" prefWidth="280" styleClass="phrase-label" textAlignment="CENTER" />
+                <Label fx:id="phraseLabel" alignment="CENTER" layoutX="360.0" layoutY="260.0" prefWidth="280" prefHeight="80" styleClass="phrase-label" text="  " textAlignment="CENTER" textFill="WHITE" wrapText="true" />
             </Pane>
         </StackPane>
     </center>
