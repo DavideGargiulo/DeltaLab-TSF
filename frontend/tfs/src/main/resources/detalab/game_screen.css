@@ -96,7 +96,10 @@
     -fx-scale-y: 1.1;
 }
 
-.phrase-label {
+.phrase-box {
     -fx-font-size: 20px;
     -fx-text-fill: white;
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-background-radius: 0;
 }

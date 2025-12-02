@@ -13,7 +13,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<BorderPane fx:id="root" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="500.0" prefWidth="800.0" stylesheets="@login.css" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="detalab.Controller.LoginPageController">
+<BorderPane fx:id="root" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="500.0" prefWidth="800.0" stylesheets="@login.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="detalab.Controller.LoginPageController">
    <left>
       <VBox alignment="CENTER" prefHeight="200.0" prefWidth="100.0" styleClass="left-pane" BorderPane.alignment="CENTER">
          <children>
@@ -38,7 +38,7 @@
                      <font>
                         <Font size="14.0" />
                      </font></Label>
-                  <TextField fx:id="emailField" maxHeight="-Infinity" minHeight="-Infinity" onAction="#Login" prefHeight="43.0" promptText="you@email.com" text="test@mail.com" />
+                  <TextField fx:id="emailField" maxHeight="-Infinity" minHeight="-Infinity" onAction="#Login" prefHeight="43.0" promptText="you@email.com" />
                </children></VBox>
             <VBox alignment="CENTER" prefHeight="200.0" prefWidth="100.0" spacing="10.0">
                <children>
@@ -46,9 +46,9 @@
                      <font>
                         <Font size="14.0" />
                      </font></Label>
-                  <PasswordField fx:id="passwordField" maxHeight="-Infinity" minHeight="-Infinity" onAction="#Login" prefHeight="43.0" promptText="***********" text="password123" />
+                  <PasswordField fx:id="passwordField" maxHeight="-Infinity" minHeight="-Infinity" onAction="#Login" prefHeight="43.0" promptText="***********" />
                </children></VBox>
-            <Button maxHeight="-Infinity" minHeight="-Infinity" mnemonicParsing="false" onAction="#Login" styleClass="login-button" text="Log in" />
+            <Button mnemonicParsing="false" onAction="#Login" styleClass="login-button" text="Log in" />
             <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0" spacing="5.0">
                <children>
                   <Label text="Don't have an account?">
